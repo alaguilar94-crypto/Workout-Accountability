@@ -264,50 +264,9 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 
 .day-body { padding: 0 16px 16px; }
 
-/* ── EXERCISE LIST WITH CHECKBOXES ── */
+/* ── EXERCISE LIST WITH ROUND GRID ── */
 .exercise-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.exercise-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--surface2);
-  border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-  border: 1px solid transparent;
-}
-.exercise-row::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent2);
-  border-radius: 3px 0 0 3px;
-  transition: background 0.2s;
-}
-.exercise-row.ex-checked { border-color: var(--accent3)44; background: var(--accent3)0d; }
-.exercise-row.ex-checked::before { background: var(--accent3); }
-.exercise-row:hover { border-color: var(--border); }
 
-.ex-cb {
-  width: 22px; height: 22px;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
-  font-size: 13px;
-}
-.exercise-row.ex-checked .ex-cb { background: var(--accent3); border-color: var(--accent3); color: var(--bg); }
-.ex-num { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-top: 1px; min-width: 16px; }
-.ex-name { font-size: 13px; font-weight: 700; flex: 1; transition: opacity 0.2s; }
-.exercise-row.ex-checked .ex-name { opacity: 0.5; text-decoration: line-through; text-decoration-color: var(--accent3)88; }
-.ex-reps { font-family: var(--font-mono); font-size: 11px; color: var(--accent3); white-space: nowrap; }
-.exercise-row.ex-checked .ex-reps { opacity: 0.4; }
 
 /* Progress bar inside day card */
 .day-progress-bar {
@@ -378,7 +337,183 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 .bonus-ex-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; color: var(--text); }
 .bonus-rounds { font-family: var(--font-mono); font-size: 10px; color: var(--accent3); white-space: nowrap; padding-top: 2px; }
 
-/* ── BOTTOM BAR ── */
+/* ── ROUND GRID ── */
+.round-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.round-status-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.round-status-current {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.round-status-current.done { color: var(--done); }
+.round-pip-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.round-pip {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.round-pip.partial { background: var(--gold)55; }
+.round-pip.complete { background: var(--done); }
+.round-pip.active {
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold)88;
+  transform: scale(1.2);
+}
+
+.round-header-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0 6px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.round-ex-spacer {
+  flex: 1;
+  min-width: 0;
+}
+.round-col-label {
+  width: 32px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  border-radius: 4px;
+  padding: 3px 0;
+}
+.round-col-label.active {
+  color: var(--gold);
+  background: var(--gold)18;
+  font-weight: 700;
+  border: 1px solid var(--gold)44;
+}
+.round-col-label.complete {
+  color: var(--done);
+}
+
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  background: var(--surface2);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.exercise-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent2);
+  border-radius: 3px 0 0 3px;
+  transition: background 0.2s;
+}
+.exercise-row.ex-checked { background: var(--done)0d; }
+.exercise-row.ex-checked::before { background: var(--done); }
+
+.ex-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.ex-num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 12px;
+}
+.ex-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ex-name {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s;
+}
+.ex-reps {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent3);
+}
+.exercise-row.ex-checked .ex-name { opacity: 0.45; text-decoration: line-through; text-decoration-color: var(--done)88; }
+.exercise-row.ex-checked .ex-reps { opacity: 0.35; }
+
+.round-boxes {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.round-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: transparent;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.round-box.is-active-round {
+  border-color: var(--gold);
+  background: var(--gold)0d;
+  box-shadow: 0 0 0 2px var(--gold)33;
+}
+.round-box:hover { border-color: var(--accent2); background: var(--accent2)11; }
+.round-box:active { transform: scale(0.85); }
+.round-box.checked {
+  background: var(--done);
+  border-color: var(--done);
+  color: #0a0a0f;
+  box-shadow: none;
+}
+.round-box.checked::after { content: '✓'; font-size: 13px; font-weight: 800; }
+
+
 .bottom-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--bg)ee;
@@ -790,21 +925,45 @@ function toggleTracking(weekId, member, day) {
   return next;
 }
 
-// Exercise checkboxes
-function getExCheck(weekId, dayName, exIdx) {
-  return S[`ex-${weekId}-${dayName}-${exIdx}`] || false;
+// Exercise round checkboxes — key: ex-{week}-{day}-{exIdx}-{roundIdx}
+function getRoundCheck(weekId, dayName, exIdx, roundIdx) {
+  return S[`ex-${weekId}-${dayName}-${exIdx}-${roundIdx}`] || false;
 }
-function toggleExCheck(weekId, dayName, exIdx) {
-  const key = `ex-${weekId}-${dayName}-${exIdx}`;
+function toggleRoundCheck(weekId, dayName, exIdx, roundIdx) {
+  const key = `ex-${weekId}-${dayName}-${exIdx}-${roundIdx}`;
   S[key] = !S[key];
   saveState(S);
   return S[key];
 }
-function resetDayChecks(weekId, dayName, count) {
-  for (let i = 0; i < count; i++) {
+function getRoundsDoneForEx(weekId, dayName, exIdx, totalRounds) {
+  let count = 0;
+  for (let r = 0; r < totalRounds; r++) {
+    if (getRoundCheck(weekId, dayName, exIdx, r)) count++;
+  }
+  return count;
+}
+function getTotalChecked(weekId, dayName, exercises, totalRounds) {
+  let total = 0;
+  exercises.forEach((_, i) => { total += getRoundsDoneForEx(weekId, dayName, i, totalRounds); });
+  return total;
+}
+function resetDayChecks(weekId, dayName, exercises, totalRounds) {
+  exercises.forEach((_, i) => {
+    for (let r = 0; r < totalRounds; r++) {
+      delete S[`ex-${weekId}-${dayName}-${i}-${r}`];
+    }
+  });
+  // also clear any old single-check keys
+  for (let i = 0; i < exercises.length; i++) {
     delete S[`ex-${weekId}-${dayName}-${i}`];
   }
   saveState(S);
+}
+// Parse round count from strings like "5 rounds", "8 rounds", "Tabata: 20s on / 10s off", "4 sets"
+function parseRoundCount(roundsStr) {
+  if (!roundsStr) return 1;
+  const m = roundsStr.match(/(\d+)/);
+  return m ? parseInt(m[1]) : 1;
 }
 
 // ────────────────────────────────────────────
@@ -869,7 +1028,27 @@ function getStatusMsg(count) {
   return { text: 'GET STARTED', cls: 'none' };
 }
 
-function renderNav() {
+// Highlight the current active round column (lowest incomplete round)
+function updateRoundColHighlight(weekId, dayName, exercises, numRounds) {
+  // Find lowest round where not all exercises are checked
+  let activeRound = -1;
+  for (let r = 0; r < numRounds; r++) {
+    const allEx = exercises.every((_, i) => getRoundCheck(weekId, dayName, i, r));
+    if (!allEx) { activeRound = r; break; }
+  }
+  for (let r = 0; r < numRounds; r++) {
+    const el = document.getElementById(`rcol-${weekId}-${dayName}-${r}`);
+    if (!el) continue;
+    el.classList.remove('active', 'complete');
+    if (r < activeRound || (activeRound === -1)) {
+      el.classList.add('complete');
+    } else if (r === activeRound) {
+      el.classList.add('active');
+    }
+  }
+}
+
+
   const nav = document.getElementById('weekNav');
   nav.innerHTML = '';
   WEEKS.forEach(w => {
@@ -929,8 +1108,10 @@ function renderWeek(week) {
     const card = document.createElement('div');
     const exercises = dayData.exercises || [];
     const totalEx = exercises.length;
-    const doneEx = totalEx > 0 ? exercises.filter((_,i) => getExCheck(week.id, dayName, i)).length : 0;
-    const allDone = totalEx > 0 && doneEx === totalEx;
+    const numRounds = parseRoundCount(dayData.rounds);
+    const totalSlots = totalEx * numRounds;
+    const doneSlots = totalEx > 0 ? getTotalChecked(week.id, dayName, exercises, numRounds) : 0;
+    const allDone = totalSlots > 0 && doneSlots === totalSlots;
 
     card.className = 'day-card' +
       (dayData.type === 'rest' ? ' rest-day' : '') +
@@ -940,7 +1121,9 @@ function renderWeek(week) {
     // Header
     const hdr = document.createElement('div');
     hdr.className = 'day-header';
-    const doneIndicator = totalEx > 0 ? `<span style="font-family:var(--font-mono);font-size:10px;color:${allDone ? 'var(--accent3)' : 'var(--muted)'}">${doneEx}/${totalEx}</span>` : '';
+    const doneIndicator = totalSlots > 0
+      ? `<span style="font-family:var(--font-mono);font-size:10px;color:${allDone ? 'var(--accent3)' : 'var(--muted)'}" id="hdr-cnt-${week.id}-${dayName}">${doneSlots}/${totalSlots}</span>`
+      : '';
     hdr.innerHTML = `
       <div class="day-name-group">
         <span class="day-dot ${dayData.type}"></span>
@@ -967,66 +1150,106 @@ function renderWeek(week) {
     } else if (dayData.type === 'rest') {
       body.innerHTML = `<div class="rest-card">REST DAY — recover, stretch, hydrate 💧</div>`;
     } else {
-      // Progress bar
-      if (totalEx > 0) {
-        const pct = Math.round((doneEx / totalEx) * 100);
-        body.innerHTML = `<div class="day-progress-bar" id="prog-${week.id}-${dayName}"><div class="day-progress-fill" style="width:${pct}%"></div></div>`;
+      // Round status bar — shows current round prominently
+      if (totalEx > 0 && numRounds > 0) {
+        // Find active round: lowest round where not all exercises done
+        let activeRound = numRounds; // default = all done
+        for (let r = 0; r < numRounds; r++) {
+          const allEx = exercises.every((_, i) => getRoundCheck(week.id, dayName, i, r));
+          if (!allEx) { activeRound = r; break; }
+        }
+        const allRoundsDone = activeRound === numRounds;
+        const pips = Array.from({length: numRounds}, (_, r) => {
+          const done = exercises.every((_, i) => getRoundCheck(week.id, dayName, i, r));
+          const partial = !done && exercises.some((_, i) => getRoundCheck(week.id, dayName, i, r));
+          const cls = done ? 'complete' : partial ? 'partial' : r === activeRound ? 'active' : '';
+          return `<div class="round-pip ${cls}"></div>`;
+        }).join('');
+        const statusBar = document.createElement('div');
+        statusBar.className = 'round-status-bar';
+        statusBar.id = `rsbar-${week.id}-${dayName}`;
+        statusBar.innerHTML = `
+          <div>
+            <div class="round-status-label">CURRENT ROUND</div>
+            <div class="round-status-current${allRoundsDone ? ' done' : ''}" id="rscur-${week.id}-${dayName}">
+              ${allRoundsDone ? '✓ ALL DONE' : `${activeRound + 1} of ${numRounds}`}
+            </div>
+          </div>
+          <div class="round-pip-row" id="rspips-${week.id}-${dayName}">${pips}</div>`;
+        body.appendChild(statusBar);
       }
 
-      // Exercise rows
+      // Round header row — shows R1 R2 … column labels above boxes
+      if (totalEx > 0 && numRounds > 1) {
+        const roundHdr = document.createElement('div');
+        roundHdr.className = 'round-header-row';
+        const roundLabels = Array.from({length: numRounds}, (_,r) =>
+          `<span class="round-col-label" id="rcol-${week.id}-${dayName}-${r}">R${r+1}</span>`
+        ).join('');
+        roundHdr.innerHTML = `<span class="round-ex-spacer"></span>${roundLabels}`;
+        body.appendChild(roundHdr);
+      }
+
+      // Progress bar
+      if (totalSlots > 0) {
+        const pct = Math.round((doneSlots / totalSlots) * 100);
+        const pb = document.createElement('div');
+        pb.className = 'day-progress-bar';
+        pb.id = `prog-${week.id}-${dayName}`;
+        pb.innerHTML = `<div class="day-progress-fill" style="width:${pct}%"></div>`;
+        body.appendChild(pb);
+      }
+
+      // Exercise rows — each with N round checkboxes
       const list = document.createElement('div');
       list.className = 'exercise-list';
-      exercises.forEach(([name, reps], i) => {
-        const checked = getExCheck(week.id, dayName, i);
+
+      // Compute initial active round for box highlighting
+      let initActiveRound = numRounds;
+      for (let r = 0; r < numRounds; r++) {
+        if (!exercises.every((_, i) => getRoundCheck(week.id, dayName, i, r))) {
+          initActiveRound = r; break;
+        }
+      }
+
+      exercises.forEach(([name, reps], exIdx) => {
+        const roundsDone = getRoundsDoneForEx(week.id, dayName, exIdx, numRounds);
+        const exAllDone = roundsDone === numRounds;
+
         const row = document.createElement('div');
-        row.className = 'exercise-row' + (checked ? ' ex-checked' : '');
-        row.dataset.weekId = week.id;
-        row.dataset.day = dayName;
-        row.dataset.idx = i;
-        row.dataset.total = totalEx;
+        row.className = 'exercise-row' + (exAllDone ? ' ex-checked' : '');
+        row.id = `exrow-${week.id}-${dayName}-${exIdx}`;
+
+        // Build round checkboxes — highlight the active round column
+        const boxes = Array.from({length: numRounds}, (_, r) => {
+          const checked = getRoundCheck(week.id, dayName, exIdx, r);
+          const isActive = !checked && r === initActiveRound;
+          return `<div class="round-box ${checked ? 'checked' : ''}${isActive ? ' is-active-round' : ''}" data-wk="${week.id}" data-day="${dayName}" data-ex="${exIdx}" data-r="${r}"></div>`;
+        }).join('');
+
         row.innerHTML = `
-          <div class="ex-cb">${checked ? '✓' : ''}</div>
-          <span class="ex-num">${i+1}</span>
-          <span class="ex-name">${name}</span>
-          <span class="ex-reps">${reps}</span>`;
-        row.addEventListener('click', () => {
-          const wId = parseInt(row.dataset.weekId);
-          const d = row.dataset.day;
-          const idx = parseInt(row.dataset.idx);
-          const tot = parseInt(row.dataset.total);
-          const isNowChecked = toggleExCheck(wId, d, idx);
+          <div class="ex-info">
+            <span class="ex-num">${exIdx+1}</span>
+            <div class="ex-text">
+              <span class="ex-name">${name}</span>
+              <span class="ex-reps">${reps}</span>
+            </div>
+          </div>
+          <div class="round-boxes">${boxes}</div>`;
 
-          row.classList.toggle('ex-checked', isNowChecked);
-          row.querySelector('.ex-cb').textContent = isNowChecked ? '✓' : '';
-
-          // Update progress bar
-          let done = 0;
-          for (let j = 0; j < tot; j++) { if (getExCheck(wId, d, j)) done++; }
-          const pct = Math.round((done / tot) * 100);
-          const pb = document.getElementById(`prog-${wId}-${d}`);
-          if (pb) pb.querySelector('.day-progress-fill').style.width = pct + '%';
-
-          // Update header counter
-          const cardEl = row.closest('.day-card');
-          if (cardEl) {
-            const counter = cardEl.querySelector('.day-header span[style*="font-mono"]');
-            if (counter) { counter.textContent = `${done}/${tot}`; counter.style.color = done===tot ? 'var(--accent3)' : 'var(--muted)'; }
-            cardEl.classList.toggle('day-done', done === tot);
-          }
-
-          if (isNowChecked && done === tot) showToast('🔥 Day complete!');
-        });
         list.appendChild(row);
       });
+
       body.appendChild(list);
 
+      // Round info footer
       if (dayData.rounds) {
         const ri = document.createElement('div');
         ri.className = 'round-info';
         ri.innerHTML = `
           <span class="round-chip">🔄 ${dayData.rounds}</span>
           ${dayData.rest ? `<span class="round-chip">⏱ ${dayData.rest}</span>` : ''}
-          ${totalEx > 0 ? `<span class="reset-link" data-week="${week.id}" data-day="${dayName}" data-total="${totalEx}">↺ reset</span>` : ''}`;
+          <span class="reset-link" data-week="${week.id}" data-day="${dayName}">↺ reset</span>`;
         body.appendChild(ri);
       }
     }
@@ -1036,14 +1259,108 @@ function renderWeek(week) {
   });
   mc.appendChild(grid);
 
+  // Initialize round column highlights for all days
+  DAY_ORDER.forEach(dayName => {
+    const dd = week.days[dayName];
+    if (!dd || !dd.exercises?.length) return;
+    updateRoundColHighlight(week.id, dayName, dd.exercises, parseRoundCount(dd.rounds));
+  });
+
+
+  mc.querySelectorAll('.round-box').forEach(box => {
+    box.addEventListener('click', e => {
+      e.stopPropagation();
+      const wk = parseInt(box.dataset.wk);
+      const day = box.dataset.day;
+      const exIdx = parseInt(box.dataset.ex);
+      const rIdx = parseInt(box.dataset.r);
+      const dayData = week.days[day];
+      if (!dayData) return;
+      const exercises = dayData.exercises || [];
+      const numRounds = parseRoundCount(dayData.rounds);
+      const totalSlots = exercises.length * numRounds;
+
+      const isNow = toggleRoundCheck(wk, day, exIdx, rIdx);
+      box.classList.toggle('checked', isNow);
+      if (isNow) box.classList.remove('is-active-round');
+
+      // Recompute active round
+      let activeRound = numRounds;
+      for (let r = 0; r < numRounds; r++) {
+        if (!exercises.every((_, i) => getRoundCheck(wk, day, i, r))) { activeRound = r; break; }
+      }
+
+      // Update all box is-active-round classes
+      exercises.forEach((_, i) => {
+        for (let r = 0; r < numRounds; r++) {
+          const b = mc.querySelector(`.round-box[data-wk="${wk}"][data-day="${day}"][data-ex="${i}"][data-r="${r}"]`);
+          if (!b) return;
+          b.classList.toggle('is-active-round', !getRoundCheck(wk, day, i, r) && r === activeRound);
+        }
+      });
+
+      // Update round col labels
+      updateRoundColHighlight(wk, day, exercises, numRounds);
+
+      // Update status bar — current round label + pips
+      const curEl = document.getElementById(`rscur-${wk}-${day}`);
+      const pipsEl = document.getElementById(`rspips-${wk}-${day}`);
+      if (curEl) {
+        const allDone = activeRound === numRounds;
+        curEl.textContent = allDone ? '✓ ALL DONE' : `${activeRound + 1} of ${numRounds}`;
+        curEl.className = `round-status-current${allDone ? ' done' : ''}`;
+      }
+      if (pipsEl) {
+        pipsEl.innerHTML = Array.from({length: numRounds}, (_, r) => {
+          const done = exercises.every((_, i) => getRoundCheck(wk, day, i, r));
+          const partial = !done && exercises.some((_, i) => getRoundCheck(wk, day, i, r));
+          const cls = done ? 'complete' : partial ? 'partial' : r === activeRound ? 'active' : '';
+          return `<div class="round-pip ${cls}"></div>`;
+        }).join('');
+      }
+
+      // Update exercise row done state
+      const roundsDone = getRoundsDoneForEx(wk, day, exIdx, numRounds);
+      const rowEl = document.getElementById(`exrow-${wk}-${day}-${exIdx}`);
+      if (rowEl) rowEl.classList.toggle('ex-checked', roundsDone === numRounds);
+
+      // Update progress bar
+      const doneNow = getTotalChecked(wk, day, exercises, numRounds);
+      const pct = Math.round((doneNow / totalSlots) * 100);
+      const pb = document.getElementById(`prog-${wk}-${day}`);
+      if (pb) pb.querySelector('.day-progress-fill').style.width = pct + '%';
+
+      // Update header counter
+      const cntEl = document.getElementById(`hdr-cnt-${wk}-${day}`);
+      if (cntEl) {
+        cntEl.textContent = `${doneNow}/${totalSlots}`;
+        cntEl.style.color = doneNow === totalSlots ? 'var(--accent3)' : 'var(--muted)';
+      }
+
+      // Card done state + toasts
+      const cardEl = box.closest('.day-card');
+      const allNowDone = doneNow === totalSlots;
+      if (cardEl) cardEl.classList.toggle('day-done', allNowDone);
+      if (isNow && allNowDone) {
+        showToast('🔥 Day complete!');
+      } else if (isNow) {
+        const roundComplete = exercises.every((_, i) => getRoundCheck(wk, day, i, rIdx));
+        if (roundComplete && activeRound < numRounds) {
+          showToast(`✓ Round ${rIdx + 1} done! → Round ${activeRound + 1}`);
+        }
+      }
+    });
+  });
+
   // Reset listeners
   mc.querySelectorAll('.reset-link').forEach(link => {
     link.addEventListener('click', e => {
       e.stopPropagation();
       const wId = parseInt(link.dataset.week);
       const d = link.dataset.day;
-      const tot = parseInt(link.dataset.total);
-      resetDayChecks(wId, d, tot);
+      const dd = week.days[d];
+      if (!dd) return;
+      resetDayChecks(wId, d, dd.exercises || [], parseRoundCount(dd.rounds));
       renderWeek(week);
     });
   });
@@ -1194,73 +1511,74 @@ function saveApiKey() {
 // ── Build system context ─────────────────────────────────────────
 function buildSystemPrompt() {
   // My equipment
-  const myEq = getMyEquipment();
-  const eqNames = myEq.length
-    ? myEq.map(id => EQUIPMENT_CATALOG.find(e => e.id === id)?.label || id).join(', ')
+  const myEqIds = getProfile().equipment || [];
+  const eqNames = myEqIds.length
+    ? myEqIds.map(id => EQUIPMENT_CATALOG.find(e => e.id === id)?.label || id).join(', ')
     : 'not specified';
+  const myName = getProfile().name || 'User';
 
   // Current week summary
   const wk = WEEKS.find(w => w.id === currentWeek);
-  let wkSummary = wk ? `Current week: ${wk.label} (${wk.dates})\n` : '';
+  let wkSummary = wk ? `CURRENT WEEK: ${wk.label} (${wk.dates})\n` : 'Current: Bonus Weeks\n';
   if (wk) {
     const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     DAY_NAMES.forEach(d => {
       const dd = wk.days[d];
       if (!dd || dd.type === 'rest' || dd.cardio) return;
-      const exList = (dd.exercises||[]).map(([n,r]) => `${n} ${r}`).join(', ');
-      wkSummary += `  ${d} (${dd.tag}): ${exList} — ${dd.rounds}\n`;
+      const exList = (dd.exercises||[]).map(([n,r]) => `${n} (${r})`).join(', ');
+      wkSummary += `  ${d} [${dd.tag}]: ${exList} — ${dd.rounds}\n`;
     });
   }
 
-  // All weeks overview
+  // All weeks overview (compact)
   const allWksSummary = WEEKS.map(w => {
     const days = Object.entries(w.days)
       .filter(([,d]) => d.exercises?.length)
-      .map(([dn,d]) => `${dn}: ${d.exercises.map(([n])=>n).join('/')}`)
+      .map(([dn,d]) => `${dn.slice(0,3)}: ${d.exercises.map(([n])=>n).join('+')}`)
       .join(' | ');
     return `${w.label}: ${days}`;
   }).join('\n');
 
-  // Tracking summary
+  // Tracking summary (count Done per member per week)
   const trSummary = MEMBERS.map(m => {
     const wkStats = WEEKS.map(w => {
-      const cnt = ['Mon','Tue','Wed','Thu','Fri','Sat'].filter(d => {
-        const k = `tr-${w.id}-${m.id}-${d}`;
-        const raw = savedState[k];
-        if (raw !== undefined) return raw === 'Done';
-        const mk = Object.keys(w.tracking).find(k2 => k2.toLowerCase() === m.id);
-        return mk && w.tracking[mk][d] === 'Done';
+      const cnt = ['Mon','Tue','Wed','Thu','Fri','Sat'].filter(day => {
+        const key = `w${w.id}-${m.id}-${day}`;
+        const stored = S[key];
+        if (stored !== undefined) return stored === 'Done';
+        const mk = Object.keys(w.tracking).find(k => k.toLowerCase() === m.id);
+        return mk && w.tracking[mk][day] === 'Done';
       }).length;
-      return `${w.label}:${cnt}/6`;
-    }).join(', ');
+      return `W${w.id}:${cnt}/6`;
+    }).join(' ');
     return `${m.name}: ${wkStats}`;
   }).join('\n');
 
-  return `You are the Tomodachi Workout Coach — a friendly, knowledgeable, direct fitness coach for a 4-person accountability group.
+  return `You are the Tomodachi Workout Coach — a friendly, direct fitness coach for a 4-person accountability group called the Tomodachi Accountability Act.
 
-GROUP MEMBERS: David, Alex, Jon, Joe
-PROGRAM: 7-week progressive circuit training (+ 3 bonus weeks). Goal: 4–5 workouts/week. Style: circuit rounds with rest, progressing from 5 rounds/1.5-min rest to 10 rounds/1-min rest. Saturday = MAF cardio (≤148 BPM).
+GROUP: David, Alex, Jon, Joe
+PROGRAM: 7-week progressive circuit training + 3 bonus weeks. Goal: 4–5 workouts/week. Style: circuit rounds with timed rest. Saturday = MAF cardio (≤148 BPM easy pace). Progression: started 5 rounds/1.5-min rest → grew to 10 rounds/60-sec rest.
 
-THE USER'S EQUIPMENT: ${eqNames}
+USER'S NAME: ${myName}
+USER'S EQUIPMENT: ${eqNames}
 
 ${wkSummary}
 ALL WEEKS OVERVIEW:
 ${allWksSummary}
 
-TRACKING DATA (workouts completed per week):
+GROUP TRACKING (Done per week):
 ${trSummary}
 
 YOUR ROLE:
-- Answer questions about the program, exercises, substitutions, and progression
-- Suggest exercise substitutions when someone lacks equipment — always offer 2-3 options
-- Flag if an exercise needs equipment the user doesn't have and give bodyweight alternatives
-- Generate new workout weeks on request, following the program's progression logic
-- Give accountability summaries and motivational nudges based on tracking data
-- Answer general fitness questions (form, injury prevention, MAF cardio, etc.)
+- Answer questions about exercises, substitutions, form, and progression
+- When someone lacks equipment for an exercise, give 2-3 concrete substitutions immediately
+- Generate new workout weeks when asked — follow the program's progressive overload logic
+- Give accountability summaries based on tracking data
+- Answer MAF cardio / general fitness questions
+- Keep responses short — this is a mobile app. No fluff.
 
-TONE: Direct, encouraging, no fluff. Use casual language — this is a friend group. You can be slightly irreverent (the group literally named a week "I failed you all"). Keep responses concise — this is a mobile app.
-
-FORMAT: Use short paragraphs. For exercise lists use bullet points. For substitutions, use a clear "SWAP:" label. Don't use markdown headers — keep it conversational.`;
+TONE: Direct, warm, slightly irreverent — this group named a week "I FAILED YOU ALL". Use casual language.
+FORMAT: Short paragraphs + bullet lists. For subs use "SWAP: [original] → [alternatives]". No markdown headers.`;
 }
 
 // ── Greeting ────────────────────────────────────────────────────
