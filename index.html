@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="友達 Workout">
+<meta name="theme-color" content="#ff4d6d">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>友達 Tomodachi Accountability Act</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a28;
+  --border: #2a2a40;
+  --accent: #ff4d6d;
+  --accent2: #7b5ea7;
+  --accent3: #00d4aa;
+  --gold: #ffd166;
+  --text: #e8e8f0;
+  --muted: #7a7a9a;
+  --done: #00d4aa;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --font-jp: 'Noto Sans JP', sans-serif;
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ── HEADER ── */
+header { padding: 32px 20px 0; text-align: center; position: relative; }
+.jp-title {
+  font-family: var(--font-jp);
+  font-size: clamp(48px, 15vw, 96px);
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -2px;
+  animation: shimmer 6s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100%{filter:hue-rotate(0deg)} 50%{filter:hue-rotate(15deg)} }
+.en-title {
+  font-family: var(--font-display);
+  font-size: clamp(10px, 3vw, 14px);
+  font-weight: 800;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.subtitle-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 1px; }
+.pill.live { border-color: var(--accent3); color: var(--accent3); }
+.pill.live::before { content: '● '; animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.pill.btn-pill { cursor: pointer; transition: all 0.2s; }
+.pill.btn-pill:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── NAV ── */
+nav { display: flex; gap: 6px; padding: 20px 16px 0; overflow-x: auto; scrollbar-width: none; }
+nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.nav-btn:hover { border-color: var(--accent2); color: var(--text); }
+.nav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.nav-btn.bonus { border-color: var(--gold); color: var(--gold); }
+.nav-btn.bonus.active { background: var(--gold); color: var(--bg); }
+
+/* ── MAIN ── */
+main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
+
+/* ── EQUIPMENT MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  z-index: 500;
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 40px;
+  width: 100%; max-width: 680px;
+  max-height: 85vh;
+  overflow-y: auto;
+  transform: translateY(40px);
+  transition: transform 0.3s;
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-title {
+  font-size: 18px; font-weight: 800;
+  margin-bottom: 6px;
+}
+.modal-sub { font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 20px; }
+.modal-close {
+  position: absolute; top: 20px; right: 20px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: var(--muted);
+}
+.modal-close:hover { border-color: var(--accent); color: var(--accent); }
+
+/* My Profile section */
+.profile-section { margin-bottom: 24px; }
+.profile-row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.profile-label { font-size: 12px; font-weight: 700; min-width: 80px; color: var(--text); }
+.profile-input {
+  flex: 1; min-width: 140px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+}
+.profile-input:focus { border-color: var(--accent2); }
+
+.equip-checkgroup { display: flex; flex-direction: column; gap: 6px; }
+.equip-check-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  user-select: none;
+}
+.equip-check-item:hover { border-color: var(--accent2)88; }
+.equip-check-item.checked { border-color: var(--accent3); background: var(--accent3)11; }
+.equip-checkbox {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-size: 11px;
+}
+.equip-check-item.checked .equip-checkbox { background: var(--accent3); border-color: var(--accent3); color: var(--bg); }
+.equip-check-label { font-size: 12px; flex: 1; }
+.equip-check-note { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+.save-btn {
+  width: 100%; margin-top: 20px;
+  background: var(--accent);
+  border: none; border-radius: 10px;
+  padding: 14px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: opacity 0.2s;
+}
+.save-btn:hover { opacity: 0.85; }
+
+/* ── WEEK HEADER ── */
+.week-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+.week-title { font-size: clamp(28px, 8vw, 42px); font-weight: 800; line-height: 1; }
+.week-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 4px; letter-spacing: 2px; text-transform: uppercase; }
+.goal-chip { background: linear-gradient(135deg,var(--accent2)22,var(--accent2)11); border: 1px solid var(--accent2)55; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text); line-height: 1.4; flex: 1; min-width: 200px; }
+.goal-chip strong { color: var(--accent2); display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+
+/* ── MY EQUIPMENT BANNER ── */
+.my-equip-bar {
+  background: var(--surface2);
+  border: 1px solid var(--accent3)33;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.my-equip-bar span { font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
+.my-equip-tags { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.equip-tag-sm {
+  background: var(--accent3)18;
+  border: 1px solid var(--accent3)44;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--accent3);
+}
+
+/* ── DAY CARDS ── */
+.days-grid { display: flex; flex-direction: column; gap: 12px; }
+.day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.day-card:hover { border-color: var(--accent2)88; }
+.day-card.rest-day { opacity: 0.55; }
+.day-card.today { border-color: var(--accent); box-shadow: 0 0 20px var(--accent)22; }
+.day-card.day-done { border-color: var(--accent3)66; }
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.day-name-group { display: flex; align-items: center; gap: 10px; }
+.day-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.day-dot.push { background: var(--accent); }
+.day-dot.pull { background: var(--accent2); }
+.day-dot.legs { background: var(--gold); }
+.day-dot.cardio { background: var(--accent3); }
+.day-dot.rest { background: var(--border); }
+.day-name { font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.day-tag { font-size: 10px; font-family: var(--font-mono); color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 999px; }
+.day-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-align: right; flex-shrink: 0; }
+
+.day-body { padding: 0 16px 16px; }
+
+/* ── EXERCISE LIST WITH CHECKBOXES ── */
+.exercise-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  border: 1px solid transparent;
+}
+.exercise-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent2);
+  border-radius: 3px 0 0 3px;
+  transition: background 0.2s;
+}
+.exercise-row.ex-checked { border-color: var(--accent3)44; background: var(--accent3)0d; }
+.exercise-row.ex-checked::before { background: var(--accent3); }
+.exercise-row:hover { border-color: var(--border); }
+
+.ex-cb {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-size: 13px;
+}
+.exercise-row.ex-checked .ex-cb { background: var(--accent3); border-color: var(--accent3); color: var(--bg); }
+.ex-num { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-top: 1px; min-width: 16px; }
+.ex-name { font-size: 13px; font-weight: 700; flex: 1; transition: opacity 0.2s; }
+.exercise-row.ex-checked .ex-name { opacity: 0.5; text-decoration: line-through; text-decoration-color: var(--accent3)88; }
+.ex-reps { font-family: var(--font-mono); font-size: 11px; color: var(--accent3); white-space: nowrap; }
+.exercise-row.ex-checked .ex-reps { opacity: 0.4; }
+
+/* Progress bar inside day card */
+.day-progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.day-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent3));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.round-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.round-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-family: var(--font-mono); font-size: 10px; color: var(--accent3); }
+.reset-link { font-family: var(--font-mono); font-size: 10px; color: var(--muted); cursor: pointer; margin-left: auto; padding: 4px 8px; }
+.reset-link:hover { color: var(--accent); }
+
+.cardio-card { background: linear-gradient(135deg,var(--accent3)11,transparent); border: 1px solid var(--accent3)33; border-radius: 10px; padding: 14px; font-size: 12px; color: var(--text); line-height: 1.6; }
+.cardio-card strong { color: var(--accent3); display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.rest-card { padding: 14px 16px; font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-align: center; letter-spacing: 1px; }
+
+/* ── TRACKER ── */
+.tracker-section { margin-top: 24px; }
+.tracker-title { font-size: 11px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+.tracker-grid { display: flex; flex-direction: column; gap: 8px; }
+.tracker-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.member-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+.member-name { font-size: 12px; font-weight: 700; min-width: 40px; }
+.day-dots-row { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.status-dot { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; border: 1px solid transparent; user-select: none; flex-shrink: 0; }
+.status-dot.done { background: var(--done)22; border-color: var(--done); color: var(--done); }
+.status-dot.rest { background: var(--surface2); border-color: var(--border); color: var(--muted); }
+.status-dot.none { background: transparent; border-color: var(--border)55; color: var(--border); }
+.status-dot:hover { transform: scale(1.1); }
+.member-count { font-family: var(--font-mono); font-size: 10px; color: var(--muted); min-width: 28px; text-align: right; }
+.status-msg { font-size: 10px; font-family: var(--font-mono); min-width: 110px; text-align: right; flex-shrink: 0; }
+.status-msg.good { color: var(--done); }
+.status-msg.mid { color: var(--gold); }
+.status-msg.none { color: var(--muted); }
+
+/* ── EQUIP + STRETCHES ── */
+.equip-section { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+.equip-title { font-size: 11px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+.equip-grid { display: flex; flex-direction: column; gap: 8px; }
+.equip-row { display: flex; gap: 10px; align-items: flex-start; }
+.equip-name { font-size: 12px; font-weight: 700; min-width: 44px; }
+.equip-items { font-size: 11px; color: var(--muted); font-family: var(--font-mono); line-height: 1.5; }
+.stretch-section { margin-top: 16px; background: linear-gradient(135deg,var(--accent2)11,transparent); border: 1px solid var(--accent2)33; border-radius: 16px; padding: 18px; }
+.stretch-title { font-size: 11px; font-family: var(--font-mono); color: var(--accent2); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+.stretch-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+.stretch-pill { background: var(--surface); border: 1px solid var(--accent2)33; border-radius: 8px; padding: 5px 12px; font-size: 11px; color: var(--text); }
+
+/* ── BONUS ── */
+.bonus-header { text-align: center; padding: 28px 0 20px; }
+.bonus-header h2 { font-size: clamp(22px,7vw,34px); font-weight: 800; background: linear-gradient(135deg,var(--gold),#ff9d4d); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.bonus-header p { color: var(--muted); font-size: 12px; margin-top: 6px; font-family: var(--font-mono); }
+.bonus-week-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+.bonus-week-title { font-size: 17px; font-weight: 800; margin-bottom: 4px; color: var(--gold); }
+.bonus-week-desc { font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 14px; }
+.bonus-days { display: flex; flex-direction: column; gap: 7px; }
+.bonus-day-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px; background: var(--surface2); border-radius: 8px; }
+.bonus-day-label { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; min-width: 34px; color: var(--muted); padding-top: 2px; }
+.bonus-exercises { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; }
+.bonus-ex-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; color: var(--text); }
+.bonus-rounds { font-family: var(--font-mono); font-size: 10px; color: var(--accent3); white-space: nowrap; padding-top: 2px; }
+
+/* ── BOTTOM BAR ── */
+.bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg)ee;
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: env(safe-area-inset-bottom, 0px) 16px 12px;
+  padding-top: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 100;
+}
+.bottom-info { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.bottom-info strong { color: var(--accent3); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--accent3);
+  color: var(--accent3); font-family: var(--font-mono); font-size: 12px;
+  padding: 10px 20px; border-radius: 999px;
+  opacity: 0; transition: all 0.3s; pointer-events: none;
+  z-index: 200; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.fade-in { animation: fadeIn 0.35s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ══ AI COACH ══════════════════════════════════════════════════════ */
+.coach-fab {
+  position:fixed; bottom:76px; right:16px;
+  width:54px; height:54px; border-radius:50%;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; z-index:300;
+  box-shadow:0 4px 24px var(--accent2)77;
+  transition:transform .2s,box-shadow .2s;
+  animation:fabPop .5s cubic-bezier(.34,1.56,.64,1) .3s both;
+}
+@keyframes fabPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.coach-fab:hover{transform:scale(1.09);box-shadow:0 6px 32px var(--accent2)99;}
+.coach-fab:active{transform:scale(.95);}
+.fab-pulse {
+  position:absolute; inset:-4px; border-radius:50%;
+  border:2px solid var(--accent2)66;
+  animation:pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.15);opacity:0;}}
+
+.coach-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:398;opacity:0;pointer-events:none;transition:opacity .3s;}
+.coach-overlay.open{opacity:1;pointer-events:all;}
+
+.coach-drawer {
+  position:fixed; bottom:0; right:0;
+  width:100%; max-width:520px; height:90vh;
+  background:var(--surface);
+  border:1px solid var(--border); border-bottom:none;
+  border-radius:20px 20px 0 0;
+  display:flex; flex-direction:column;
+  z-index:399;
+  transform:translateY(100%);
+  transition:transform .38s cubic-bezier(.2,.9,.3,1);
+  box-shadow:0 -12px 48px rgba(0,0,0,.7);
+}
+.coach-drawer.open{transform:translateY(0);}
+
+.coach-head {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 16px 12px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.coach-av {
+  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+}
+.coach-headinfo {flex:1;}
+.coach-headtitle{font-size:15px;font-weight:800;}
+.coach-headsub{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:1px;}
+.coach-x{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background .15s;line-height:1;}
+.coach-x:hover{background:var(--surface2);color:var(--text);}
+
+/* API key setup */
+.coach-apibar{margin:12px;padding:14px;background:var(--surface2);border:1px solid var(--gold)44;border-radius:12px;flex-shrink:0;}
+.coach-apibar p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;}
+.coach-apibar p strong{color:var(--gold);}
+.apirow{display:flex;gap:8px;}
+.api-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;transition:border-color .2s;}
+.api-input:focus{border-color:var(--accent2);}
+.api-input::placeholder{color:var(--muted);}
+.api-savebtn{background:var(--accent2);border:none;border-radius:8px;padding:9px 14px;color:#fff;font-family:var(--font-display);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .2s;}
+.api-savebtn:hover{opacity:.85;}
+
+/* Context chips */
+.coach-ctx{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;border-bottom:1px solid var(--border);}
+.coach-ctx::-webkit-scrollbar{display:none;}
+.ctx-chip{flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.ctx-chip.on{border-color:var(--accent3)88;color:var(--accent3);}
+
+/* Quick prompts */
+.coach-quick{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.coach-quick::-webkit-scrollbar{display:none;}
+.qp{flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.qp:hover{border-color:var(--accent2);color:var(--accent2);background:var(--accent2)11;}
+.qp:active{transform:scale(.97);}
+
+/* Messages */
+.coach-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;}
+.cmsg{display:flex;gap:8px;animation:msgIn .25s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.cmsg.user{flex-direction:row-reverse;}
+.cbubble{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;}
+.cmsg.user .cbubble{background:var(--accent2);color:#fff;border-bottom-right-radius:4px;}
+.cmsg.coach .cbubble{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.cav{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;align-self:flex-end;}
+.cmsg.coach .cav{background:linear-gradient(135deg,var(--accent2),var(--accent));}
+.cmsg.user .cav{background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--muted);}
+.cbubble strong{font-weight:800;}
+.cbubble ul{padding-left:18px;margin:6px 0;}
+.cbubble li{margin:3px 0;}
+.cbubble .subst-block{background:var(--surface);border:1px solid var(--accent3)44;border-radius:8px;padding:10px 12px;margin:8px 0;border-left:3px solid var(--accent3);}
+.cbubble .subst-title{font-family:var(--font-mono);font-size:10px;color:var(--accent3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.typing-dots{display:flex;gap:5px;align-items:center;padding:4px 2px;}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:tdot 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+
+/* Input area */
+.coach-inputarea{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface);}
+.coach-tinput{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 14px;color:var(--text);font-family:var(--font-display);font-size:13px;outline:none;resize:none;max-height:90px;transition:border-color .2s;line-height:1.4;}
+.coach-tinput:focus{border-color:var(--accent2);}
+.coach-tinput::placeholder{color:var(--muted);}
+.coach-sendbtn{width:44px;height:44px;border-radius:12px;background:var(--accent2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;align-self:flex-end;transition:opacity .2s,transform .15s;}
+.coach-sendbtn:hover{opacity:.85;}
+.coach-sendbtn:active{transform:scale(.92);}
+.coach-sendbtn:disabled{opacity:.3;cursor:default;}
+/* ══ END AI COACH ══════════════════════════════════════════════════ */
+</style>
+</head>
+<body>
+
+<header>
+  <div class="jp-title">友達</div>
+  <div class="en-title">Tomodachi Accountability Act</div>
+  <div class="subtitle-bar">
+    <span class="pill live">4 Members Active</span>
+    <span class="pill">7 Weeks Logged</span>
+    <span class="pill btn-pill" id="equipBtn" onclick="openEquipModal()">⚙ My Equipment</span>
+  </div>
+</header>
+
+<nav id="weekNav"></nav>
+<main id="mainContent"></main>
+
+<div class="bottom-bar">
+  <div class="bottom-info">Tap exercises to check off · Tap dots to log</div>
+  <div class="bottom-info" id="todayIndicator"></div>
+</div>
+
+<!-- Equipment Modal -->
+<div class="modal-overlay" id="equipModal">
+  <div class="modal-sheet" style="position:relative">
+    <div class="modal-close" onclick="closeEquipModal()">✕</div>
+    <div class="modal-title">⚙ My Equipment</div>
+    <div class="modal-sub">Select what you have — workouts will adapt to show your gear</div>
+
+    <div class="profile-section">
+      <div class="profile-row">
+        <div class="profile-label">Your Name</div>
+        <input class="profile-input" id="profileName" placeholder="e.g. Alex" maxlength="20">
+      </div>
+    </div>
+
+    <div class="equip-title" style="margin-bottom:12px">// Available Equipment</div>
+    <div class="equip-checkgroup" id="equipChecklist"></div>
+
+    <button class="save-btn" onclick="saveEquipment()">Save My Setup</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ AI COACH BUTTON + DRAWER ══════════════════════════════════ -->
+<button class="coach-fab" id="coachFab" onclick="coachOpen()" title="AI Workout Coach">
+  🤖
+  <span class="fab-pulse"></span>
+</button>
+
+<div class="coach-overlay" id="coachOverlay" onclick="coachClose()"></div>
+
+<div class="coach-drawer" id="coachDrawer">
+  <!-- Header -->
+  <div class="coach-head">
+    <div class="coach-av">🤖</div>
+    <div class="coach-headinfo">
+      <div class="coach-headtitle">Tomodachi Coach</div>
+      <div class="coach-headsub" id="coachHeadSub">Powered by Claude · ask anything</div>
+    </div>
+    <button class="coach-x" onclick="coachClose()">✕</button>
+  </div>
+
+  <!-- API key setup (shown when no key stored) -->
+  <div class="coach-apibar" id="coachApiBar" style="display:none">
+    <p>Enter your <strong>Anthropic API key</strong> to activate the coach. It's saved to localStorage on this device only and never sent anywhere except api.anthropic.com.</p>
+    <div class="apirow">
+      <input class="api-input" id="coachApiInput" type="password" placeholder="sk-ant-...">
+      <button class="api-savebtn" onclick="saveApiKey()">Save Key</button>
+    </div>
+  </div>
+
+  <!-- Context chips -->
+  <div class="coach-ctx" id="coachCtx"></div>
+
+  <!-- Quick prompts -->
+  <div class="coach-quick" id="coachQuick"></div>
+
+  <!-- Messages -->
+  <div class="coach-msgs" id="coachMsgs"></div>
+
+  <!-- Input -->
+  <div class="coach-inputarea">
+    <textarea class="coach-tinput" id="coachInput" placeholder="Ask about substitutions, progression, form..." rows="1"></textarea>
+    <button class="coach-sendbtn" id="coachSendBtn" onclick="coachSend()" disabled>➤</button>
+  </div>
+</div>
+<!-- ══ END AI COACH ════════════════════════════════════════════════ -->
+
+<script>
+// ────────────────────────────────────────────
+// EQUIPMENT CATALOG
+// ────────────────────────────────────────────
+const EQUIPMENT_CATALOG = [
+  { id: 'kb_light',    label: 'Kettlebell (light, up to 25#)',   note: 'swings, goblet squats, presses' },
+  { id: 'kb_heavy',   label: 'Kettlebell (heavy, 30–50#)',      note: 'deadlifts, swings, cleans' },
+  { id: 'db_light',   label: 'Dumbbells (up to 25#)',           note: 'curls, lateral raises, flies' },
+  { id: 'db_heavy',   label: 'Dumbbells (25–50#)',              note: 'rows, presses, pullovers' },
+  { id: 'bench',      label: 'Bench or Squat Rack',             note: 'bench press, dips, incline' },
+  { id: 'treadmill',  label: 'Treadmill',                       note: 'cardio, MAF runs' },
+  { id: 'vest',       label: 'Weighted Vest (10–20#)',          note: 'pushups, squats, walks' },
+  { id: 'sandbag',    label: 'Sandbag (50–100#)',               note: 'carries, squats, lifts' },
+  { id: 'bag',        label: 'Punching Bag',                    note: 'conditioning, striking' },
+  { id: 'bands',      label: 'Resistance Bands',                note: 'pull-aparts, face pulls' },
+  { id: 'pullup',     label: 'Pull-Up Bar',                     note: 'pull-ups, hanging core' },
+  { id: 'floor',      label: 'Floor / Bodyweight Only',         note: 'no equipment needed — always available' },
+];
+
+// ────────────────────────────────────────────
+// WORKOUT DATA
+// ────────────────────────────────────────────
+const MEMBERS = [
+  { id: 'david', name: 'David', color: '#ff4d6d', initials: 'D' },
+  { id: 'alex',  name: 'Alex',  color: '#7b5ea7', initials: 'A' },
+  { id: 'jon',   name: 'Jon',   color: '#00d4aa', initials: 'J' },
+  { id: 'joe',   name: 'Joe',   color: '#ffd166', initials: 'Jo' }
+];
+
+const WEEKS = [
+  {
+    id:1, label:'Week 1', dates:'9/21 – 9/27',
+    note:'Sticking to 5 rounds. Push it if you feel you can keep going.',
+    days:{
+      Monday:   {tag:'Full Body',   type:'push', exercises:[['Pushups','10 reps'],['KB Swings','20 reps'],['Mountain Climbers','10 reps']], rounds:'5 rounds', rest:'1.5 min rest'},
+      Tuesday:  {tag:'Lower + KB',  type:'legs', exercises:[['Squats','10 reps'],['Reverse Lunge','5 reps/leg'],['KB Swings','10 reps']], rounds:'5 rounds', rest:'1.5 min rest'},
+      Wednesday:{tag:'Push + Core', type:'push', exercises:[['Pushups','10 reps'],['Mountain Climbers','20 reps'],['Overhead Press','10 reps']], rounds:'5 rounds', rest:'1.5 min rest'},
+      Thursday: {tag:'Core + Plank',type:'pull', exercises:[['Shoulder Taps (tall plank)','20 reps'],['Hollow Rocking','10 reps'],['JackKnife','10 reps']], rounds:'5 rounds', rest:'1.5 min rest'},
+      Friday:   {tag:'Conditioning',type:'push', exercises:[['Burpee Sprawls','10 reps'],['Pushups','10 reps'],['Skier Jumps','10 reps']], rounds:'5 rounds', rest:'1.5 min rest'},
+      Saturday: {tag:'Cardio',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:null,Tue:null,Wed:'Done',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Done',Tue:'Done',Wed:'Rest',Thu:'Rest',Fri:'Rest',Sat:null},Jon:{Mon:'Rest',Tue:'Done',Wed:'Done',Thu:'Rest',Fri:'Done',Sat:'Done'},Joe:{Mon:'Done',Tue:'Done',Wed:'Done',Thu:'Done',Fri:'Done',Sat:null}}
+  },
+  {
+    id:2, label:'Week 2', dates:'9/28 – 10/4',
+    note:'5 rounds still. Increasing variety — curls, lateral raises, bridges.',
+    days:{
+      Monday:   {tag:'Push + Curl',    type:'pull', exercises:[['Pushups','10 reps'],['Dumbbell Curls','10 reps'],['Overhead Press','10 reps'],['Flutter Kicks','10 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Tuesday:  {tag:'Lower Body',     type:'legs', exercises:[['Squats','5 reps'],['Reverse Lunge','5 reps/leg'],['Bridges','10 reps'],['Squats','5 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Wednesday:{tag:'Push + Shoulder',type:'push', exercises:[['Pushups','10 reps'],['Plank','15 sec'],['Lateral Raises','10 reps'],['Tricep Overhead Extension','10 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Thursday: {tag:'Explosive Lower',type:'legs', exercises:[['Squat Jumps','5 reps'],['High Knees','10 reps'],['Calf Raises','15 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Friday:   {tag:'Conditioning',   type:'push', exercises:[['Burpees (no jump)','10 reps'],['Pushups','10 reps'],['Jumping Jacks','8 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Saturday: {tag:'Cardio',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Done',Tue:'Done',Wed:'Done',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Done',Tue:'Done',Wed:'Done',Thu:null,Fri:'Done',Sat:null},Jon:{Mon:'Done',Tue:'Done',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Done',Tue:'Done',Wed:'Rest',Thu:'Done',Fri:'Rest',Sat:'Rest'}}
+  },
+  {
+    id:3, label:'Week 3', dates:'10/5 – 10/11',
+    note:'Bumped to 7 rounds Mon/Tue. Wednesday goes 4 sets with specific weights.',
+    days:{
+      Monday:   {tag:'Push + Shoulder',type:'push', exercises:[['Pushups','10 reps'],['Dumbbell Curls','10 reps'],['Overhead Press','10 reps'],['Lateral Raises','10 reps']], rounds:'7 rounds', rest:'90 sec rest'},
+      Tuesday:  {tag:'Lower + Core',   type:'legs', exercises:[['Squats','5 reps'],['Reverse Lunge','5 reps/leg'],['Pogos','10 reps'],['Squats','5 reps']], rounds:'7 rounds', rest:'90 sec rest'},
+      Wednesday:{tag:'4-Set Strength', type:'pull', exercises:[['Pushups','4×10'],['Bicep Curls (30# DBs)','4×10'],['Tricep Extension + DB Flies','4×10'],['Sit Ups','4×10']], rounds:'4 sets', rest:'60 sec rest'},
+      Thursday: {tag:'Explosive',      type:'legs', exercises:[['Squat Jumps','5 reps'],['High Knees','10 reps'],['Calf Raises','15 reps'],['Russian Twist','5 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Friday:   {tag:'Conditioning',   type:'push', exercises:[['Burpees (no jump)','10 reps'],['Pushups','10 reps'],['Jumping Jacks','8 reps']], rounds:'8 rounds', rest:'2 min rest'},
+      Saturday: {tag:'Cardio / Rest',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Done',Tue:'Done',Wed:'Done',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Done',Tue:'Rest',Wed:'Rest',Thu:'Done',Fri:'Rest',Sat:null},Jon:{Mon:'Done',Tue:'Done',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Done',Tue:'Done',Wed:'Rest',Thu:'Done',Fri:'Rest',Sat:'Rest'}}
+  },
+  {
+    id:4, label:'Week 4', dates:'10/12 – 10/18',
+    note:'10 rounds Monday! Tabata Tuesday. Real progression happening.',
+    days:{
+      Monday:   {tag:'Pull + Arms',     type:'pull', exercises:[['Hammer Curls','10 reps'],['Dumbbell Curls','10 reps'],['Rear Delt Flies','10 reps'],['DB Pullover (ground)','10 reps']], rounds:'10 rounds', rest:'60 sec rest'},
+      Tuesday:  {tag:'Tabata Lower',    type:'legs', exercises:[['Squats (weighted)','8 Tabata rounds'],['Plank with Hip Dips','8 Tabata rounds']], rounds:'Tabata: 20s on / 10s off', rest:'—'},
+      Wednesday:{tag:'Tricep + Core',   type:'push', exercises:[['Rolling Tricep Extension','10 reps'],['Pushups','5 reps'],['Hindu Pushups','5 reps'],['Rolling Tricep Extension','10 reps']], rounds:'8 rounds', rest:'90 sec rest'},
+      Thursday: {tag:'Explosive + Core',type:'legs', exercises:[['Squat Jumps','10 reps'],['Bulgarian Split Squats','5 reps/leg'],['Calf Raises','15 reps'],['Flutter Kicks','10 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Friday:   {tag:'Conditioning',    type:'push', exercises:[['Burpees (no jump)','10 reps'],['Pushups','10 reps'],['Jumping Jacks','8 reps']], rounds:'8 rounds', rest:'2 min rest'},
+      Saturday: {tag:'Cardio / Rest',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Rest',Tue:'Done',Wed:'Done',Thu:'Rest',Fri:'Rest',Sat:null},Jon:{Mon:'Rest',Tue:'Rest',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:'Rest',Fri:'Rest',Sat:'Rest'}}
+  },
+  {
+    id:5, label:'Week 5', dates:'10/19 – 10/25',
+    note:'"I failed you all" — same program as Week 4. Getting back on track.',
+    days:{
+      Monday:   {tag:'Pull + Arms',     type:'pull', exercises:[['Hammer Curls','10 reps'],['Dumbbell Curls','10 reps'],['Rear Delt Flies','10 reps'],['DB Pullover','10 reps']], rounds:'10 rounds', rest:'60 sec rest'},
+      Tuesday:  {tag:'Tabata Lower',    type:'legs', exercises:[['Squats (weighted)','8 Tabata rounds'],['Plank with Hip Dips','8 Tabata rounds']], rounds:'Tabata: 20s on / 10s off', rest:'—'},
+      Wednesday:{tag:'Tricep + Core',   type:'push', exercises:[['Rolling Tricep Extension','10 reps'],['Pushups','5 reps'],['Hindu Pushups','5 reps'],['Rolling Tricep Extension','10 reps']], rounds:'8 rounds', rest:'90 sec rest'},
+      Thursday: {tag:'Explosive + Core',type:'legs', exercises:[['Squat Jumps','10 reps'],['Bulgarian Split Squats','5 reps/leg'],['Calf Raises','15 reps'],['Flutter Kicks','10 reps']], rounds:'5 rounds', rest:'90 sec rest'},
+      Friday:   {tag:'Conditioning',    type:'push', exercises:[['Burpees (no jump)','10 reps'],['Pushups','10 reps'],['Jumping Jacks','8 reps']], rounds:'8 rounds', rest:'2 min rest'},
+      Saturday: {tag:'Cardio / Rest',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Rest',Tue:'Done',Wed:'Done',Thu:'Rest',Fri:'Rest',Sat:null},Jon:{Mon:'Rest',Tue:'Rest',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:'Rest',Fri:'Rest',Sat:'Rest'}}
+  },
+  {
+    id:6, label:'Week 6', dates:'10/26 – 11/1',
+    note:'Introduced supersets — Bicep Curls → Hammer Curls back to back.',
+    days:{
+      Monday:   {tag:'Superset Arms',         type:'pull', exercises:[['Bicep Curls → Hammer Curls','Superset']], rounds:'5 rounds', rest:'90 sec rest'},
+      Tuesday:  {tag:'Rest / Active Recovery', type:'rest'},
+      Wednesday:{tag:'Superset Arms',         type:'pull', exercises:[['Bicep Curls → Hammer Curls','Superset']], rounds:'5 rounds', rest:'90 sec rest'},
+      Thursday: {tag:'Rest',type:'rest'},
+      Friday:   {tag:'Rest',type:'rest'},
+      Saturday: {tag:'Cardio / Rest',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Rest',Tue:'Done',Wed:'Done',Thu:'Rest',Fri:'Rest',Sat:null},Jon:{Mon:'Rest',Tue:'Rest',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:'Rest',Fri:'Rest',Sat:'Rest'}}
+  },
+  {
+    id:7, label:'Week 7', dates:'11/2 – 11/8',
+    note:'8 rounds, 1-min rest. Clean program — Push Mon, Lower Tue, Upper Wed, Mixed Thu.',
+    days:{
+      Monday:   {tag:'Push Day',  type:'push', exercises:[['Pushups','10 reps'],['Bicep Curls','10 reps'],['Overhead Press','10 reps']], rounds:'8 rounds', rest:'1 min rest'},
+      Tuesday:  {tag:'Lower Body',type:'legs', exercises:[['Squats','12 reps'],['Reverse Lunges','5 reps/leg'],['Jumping Jacks','15 reps']], rounds:'8 rounds', rest:'1 min rest'},
+      Wednesday:{tag:'Upper/Chest',type:'push',exercises:[['Dumbbell Flies (20#)','15 reps'],['Tricep Bench Dips','15 reps'],['DB Pullover (20#)','10 reps'],['Sit Ups','15 reps']], rounds:'8 rounds', rest:'1 min rest'},
+      Thursday: {tag:'Burpee Circuit',type:'push',exercises:[['Burpees','10 reps'],['Pushups','10 reps'],['Burpees','10 reps'],['Pushups','10 reps']], rounds:'8 rounds', rest:'1 min rest'},
+      Friday:   {tag:'Rest',type:'rest'},
+      Saturday: {tag:'Cardio / Rest',type:'cardio',cardio:true},
+    },
+    tracking:{David:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:null,Fri:null,Sat:null},Alex:{Mon:'Rest',Tue:'Done',Wed:'Done',Thu:'Rest',Fri:'Rest',Sat:null},Jon:{Mon:'Rest',Tue:'Rest',Wed:null,Thu:null,Fri:null,Sat:null},Joe:{Mon:'Rest',Tue:'Rest',Wed:'Rest',Thu:'Rest',Fri:'Rest',Sat:'Rest'}}
+  }
+];
+
+const BONUS_WEEKS = [
+  {id:8,label:'Week 8 — Power',dates:'Bonus',desc:'Introduce KB deadlifts + explosive push combos. 8–10 rounds.',days:[{day:'MON',exercises:['KB Deadlift × 8','Pushup × 10','KB Swing × 15','Hollow Hold 20s'],rounds:'8 rds / 90s rest'},{day:'TUE',exercises:['Goblet Squat × 10','Bulgarian Split Squat × 6/leg','Jump Squat × 5','Calf Raise × 20'],rounds:'6 rds / 60s rest'},{day:'WED',exercises:['Rest / Active Stretch'],rounds:'—'},{day:'THU',exercises:['DB Row × 10','Hammer Curl × 10','Rear Delt Fly × 12','Face Pull / Band × 15'],rounds:'8 rds / 90s rest'},{day:'FRI',exercises:['Burpee × 10','Skier Jump × 10','Mountain Climber × 20','Pushup × 10'],rounds:'8 rds / 90s rest'},{day:'SAT',exercises:['MAF Run 30–45 min OR 45-min walk @ <148 BPM'],rounds:'Cardio'}]},
+  {id:9,label:'Week 9 — Strength',dates:'Bonus',desc:'Heavier loads. 4-set strength day Wednesday, push rounds up Monday.',days:[{day:'MON',exercises:['Weighted Vest Pushup × 10','KB Swing × 20','Lateral Raise × 12','Overhead Press × 10'],rounds:'10 rds / 60s rest'},{day:'TUE',exercises:['Sandbag Squat × 8','Reverse Lunge × 8/leg','Pogo Jumps × 15','Calf Raise × 20'],rounds:'8 rds / 90s rest'},{day:'WED',exercises:['4×10 Bench Press','4×10 DB Row','4×10 Tricep Extension','4×10 Bicep Curl'],rounds:'4 sets / 90s rest'},{day:'THU',exercises:['Rest / Mobility'],rounds:'—'},{day:'FRI',exercises:['KB Complex: Swing→Clean→Press × 5','Pushup × 10','Mountain Climber × 20'],rounds:'6 rds / 90s rest'},{day:'SAT',exercises:['MAF Run / Walk OR Rest'],rounds:'Cardio'}]},
+  {id:10,label:'Week 10 — Deload',dates:'Bonus',desc:'Back off week. 50% volume, focus on form and recovery.',days:[{day:'MON',exercises:['Pushup × 10','KB Swing × 15','Overhead Press × 8'],rounds:'4 rds / 90s rest'},{day:'TUE',exercises:['Squat × 10','Reverse Lunge × 5/leg','Glute Bridge × 12'],rounds:'4 rds / 90s rest'},{day:'WED',exercises:['Full Body Stretch + Foam Roll'],rounds:'Recovery'},{day:'THU',exercises:['DB Curl × 10','Lateral Raise × 10','Band Pull-Apart × 15'],rounds:'4 rds / 90s rest'},{day:'FRI',exercises:['Rest'],rounds:'—'},{day:'SAT',exercises:['Easy Walk 45 min @ <140 BPM'],rounds:'Cardio'}]}
+];
+
+const MEMBER_EQUIPMENT = [
+  {name:'David', items:'TBD — update when available'},
+  {name:'Alex',  items:'30–50# KB, Dumbbells up to 50#, bench & squat rack, treadmill, weighted vest, punching bag'},
+  {name:'Jon',   items:'30–50# KB, Dumbbells up to 25#, bench & squat rack, treadmill'},
+  {name:'Joe',   items:'50# KB, Dumbbells up to 30#, 100# sandbag, bench, 20# weighted vest'}
+];
+
+const STRETCHES = ['Lower Trunk Rotation','Open Book','Downward Dog','Child\'s Pose','Hip Flexor Stretch','90/90 Hip Stretch','Doorway Chest Stretch','Shoulder Cross-Body Stretch','Pigeon Pose','World\'s Greatest Stretch'];
+
+const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const SHORT_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────
+let currentWeek = 1;
+const SK = 'tomodachi-v3';
+
+function loadState() { try { return JSON.parse(localStorage.getItem(SK) || '{}'); } catch { return {}; } }
+function saveState(s) { try { localStorage.setItem(SK, JSON.stringify(s)); } catch {} }
+let S = loadState();
+
+// Profile
+function getProfile() {
+  return { name: S._profileName || '', equipment: S._equipment || ['floor'] };
+}
+function saveProfile(name, equip) {
+  S._profileName = name;
+  S._equipment = equip;
+  saveState(S);
+}
+
+// Tracking
+function getTracking(weekId, member, day) {
+  const key = `w${weekId}-${member}-${day}`;
+  if (S[key] !== undefined) return S[key];
+  const week = WEEKS.find(w => w.id === weekId);
+  if (!week) return null;
+  const mk = Object.keys(week.tracking).find(k => k.toLowerCase() === member);
+  if (!mk) return null;
+  return week.tracking[mk][day] || null;
+}
+function toggleTracking(weekId, member, day) {
+  const key = `w${weekId}-${member}-${day}`;
+  const cur = getTracking(weekId, member, day);
+  const next = cur === null ? 'Done' : cur === 'Done' ? 'Rest' : null;
+  S[key] = next;
+  saveState(S);
+  return next;
+}
+
+// Exercise checkboxes
+function getExCheck(weekId, dayName, exIdx) {
+  return S[`ex-${weekId}-${dayName}-${exIdx}`] || false;
+}
+function toggleExCheck(weekId, dayName, exIdx) {
+  const key = `ex-${weekId}-${dayName}-${exIdx}`;
+  S[key] = !S[key];
+  saveState(S);
+  return S[key];
+}
+function resetDayChecks(weekId, dayName, count) {
+  for (let i = 0; i < count; i++) {
+    delete S[`ex-${weekId}-${dayName}-${i}`];
+  }
+  saveState(S);
+}
+
+// ────────────────────────────────────────────
+// EQUIPMENT MODAL
+// ────────────────────────────────────────────
+function buildEquipChecklist() {
+  const { equipment } = getProfile();
+  const container = document.getElementById('equipChecklist');
+  container.innerHTML = '';
+  EQUIPMENT_CATALOG.forEach(item => {
+    const checked = equipment.includes(item.id);
+    const div = document.createElement('div');
+    div.className = 'equip-check-item' + (checked ? ' checked' : '');
+    div.dataset.id = item.id;
+    div.innerHTML = `
+      <div class="equip-checkbox">${checked ? '✓' : ''}</div>
+      <div style="flex:1">
+        <div class="equip-check-label">${item.label}</div>
+        <div class="equip-check-note">${item.note}</div>
+      </div>`;
+    div.addEventListener('click', () => {
+      div.classList.toggle('checked');
+      const cb = div.querySelector('.equip-checkbox');
+      cb.textContent = div.classList.contains('checked') ? '✓' : '';
+    });
+    container.appendChild(div);
+  });
+}
+
+function openEquipModal() {
+  const p = getProfile();
+  document.getElementById('profileName').value = p.name;
+  buildEquipChecklist();
+  document.getElementById('equipModal').classList.add('open');
+}
+
+function closeEquipModal() {
+  document.getElementById('equipModal').classList.remove('open');
+}
+
+function saveEquipment() {
+  const name = document.getElementById('profileName').value.trim();
+  const equip = Array.from(document.querySelectorAll('.equip-check-item.checked')).map(el => el.dataset.id);
+  if (equip.length === 0) equip.push('floor');
+  saveProfile(name, equip);
+  closeEquipModal();
+  renderAll();
+  showToast('✓ Equipment saved!');
+}
+
+// Close modal on overlay click
+document.getElementById('equipModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEquipModal();
+});
+
+// ────────────────────────────────────────────
+// RENDER
+// ────────────────────────────────────────────
+function getStatusMsg(count) {
+  if (count >= 4) return { text: 'GOOD SHIT 🔥', cls: 'good' };
+  if (count >= 1) return { text: 'KEEP GOING!', cls: 'mid' };
+  return { text: 'GET STARTED', cls: 'none' };
+}
+
+function renderNav() {
+  const nav = document.getElementById('weekNav');
+  nav.innerHTML = '';
+  WEEKS.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (currentWeek === w.id ? ' active' : '');
+    btn.textContent = w.label;
+    btn.onclick = () => { currentWeek = w.id; renderAll(); };
+    nav.appendChild(btn);
+  });
+  const bonus = document.createElement('button');
+  bonus.className = 'nav-btn bonus' + (currentWeek === 'bonus' ? ' active' : '');
+  bonus.textContent = '+ Bonus Weeks';
+  bonus.onclick = () => { currentWeek = 'bonus'; renderAll(); };
+  nav.appendChild(bonus);
+}
+
+function renderMyEquipBanner(mc) {
+  const p = getProfile();
+  if (!p.equipment.length) return;
+  const tags = p.equipment.map(id => {
+    const e = EQUIPMENT_CATALOG.find(c => c.id === id);
+    return e ? `<span class="equip-tag-sm">${e.label.split('(')[0].trim()}</span>` : '';
+  }).join('');
+  const nameStr = p.name ? `<strong style="color:var(--text)">${p.name}</strong> ·` : '';
+  const div = document.createElement('div');
+  div.className = 'my-equip-bar';
+  div.innerHTML = `<span>${nameStr} Your gear:</span><div class="my-equip-tags">${tags}</div><span style="cursor:pointer;color:var(--accent2);font-size:10px" onclick="openEquipModal()">Edit</span>`;
+  mc.appendChild(div);
+}
+
+function renderWeek(week) {
+  const mc = document.getElementById('mainContent');
+  mc.innerHTML = '';
+  mc.className = 'fade-in';
+
+  const header = document.createElement('div');
+  header.className = 'week-header';
+  header.innerHTML = `
+    <div>
+      <div class="week-label">${week.dates}</div>
+      <div class="week-title">${week.label}</div>
+    </div>
+    <div class="goal-chip"><strong>Coach Note</strong>${week.note}</div>`;
+  mc.appendChild(header);
+
+  renderMyEquipBanner(mc);
+
+  const grid = document.createElement('div');
+  grid.className = 'days-grid';
+
+  const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+
+  DAY_ORDER.forEach(dayName => {
+    const dayData = week.days[dayName];
+    if (!dayData) return;
+
+    const card = document.createElement('div');
+    const exercises = dayData.exercises || [];
+    const totalEx = exercises.length;
+    const doneEx = totalEx > 0 ? exercises.filter((_,i) => getExCheck(week.id, dayName, i)).length : 0;
+    const allDone = totalEx > 0 && doneEx === totalEx;
+
+    card.className = 'day-card' +
+      (dayData.type === 'rest' ? ' rest-day' : '') +
+      (dayName === todayName ? ' today' : '') +
+      (allDone ? ' day-done' : '');
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'day-header';
+    const doneIndicator = totalEx > 0 ? `<span style="font-family:var(--font-mono);font-size:10px;color:${allDone ? 'var(--accent3)' : 'var(--muted)'}">${doneEx}/${totalEx}</span>` : '';
+    hdr.innerHTML = `
+      <div class="day-name-group">
+        <span class="day-dot ${dayData.type}"></span>
+        <span class="day-name">${dayName}</span>
+        <span class="day-tag">${dayData.tag}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${doneIndicator}
+        <div class="day-meta">${dayData.rounds || (dayData.cardio ? 'Cardio' : 'Rest')}</div>
+      </div>`;
+    card.appendChild(hdr);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'day-body';
+
+    if (dayData.cardio) {
+      body.innerHTML = `
+        <div class="cardio-card">
+          <strong>MAF Cardio Day</strong>
+          Run at slow, easy pace for 30 minutes. Don't worry about distance — focus on breathing and low heart rate.<br><br>
+          <strong style="color:var(--gold);font-size:10px;letter-spacing:1px">ALTERNATIVE:</strong> Walk with HR goal of <strong style="color:var(--accent3)">≤148 BPM</strong> for 45–60 min.
+        </div>`;
+    } else if (dayData.type === 'rest') {
+      body.innerHTML = `<div class="rest-card">REST DAY — recover, stretch, hydrate 💧</div>`;
+    } else {
+      // Progress bar
+      if (totalEx > 0) {
+        const pct = Math.round((doneEx / totalEx) * 100);
+        body.innerHTML = `<div class="day-progress-bar" id="prog-${week.id}-${dayName}"><div class="day-progress-fill" style="width:${pct}%"></div></div>`;
+      }
+
+      // Exercise rows
+      const list = document.createElement('div');
+      list.className = 'exercise-list';
+      exercises.forEach(([name, reps], i) => {
+        const checked = getExCheck(week.id, dayName, i);
+        const row = document.createElement('div');
+        row.className = 'exercise-row' + (checked ? ' ex-checked' : '');
+        row.dataset.weekId = week.id;
+        row.dataset.day = dayName;
+        row.dataset.idx = i;
+        row.dataset.total = totalEx;
+        row.innerHTML = `
+          <div class="ex-cb">${checked ? '✓' : ''}</div>
+          <span class="ex-num">${i+1}</span>
+          <span class="ex-name">${name}</span>
+          <span class="ex-reps">${reps}</span>`;
+        row.addEventListener('click', () => {
+          const wId = parseInt(row.dataset.weekId);
+          const d = row.dataset.day;
+          const idx = parseInt(row.dataset.idx);
+          const tot = parseInt(row.dataset.total);
+          const isNowChecked = toggleExCheck(wId, d, idx);
+
+          row.classList.toggle('ex-checked', isNowChecked);
+          row.querySelector('.ex-cb').textContent = isNowChecked ? '✓' : '';
+
+          // Update progress bar
+          let done = 0;
+          for (let j = 0; j < tot; j++) { if (getExCheck(wId, d, j)) done++; }
+          const pct = Math.round((done / tot) * 100);
+          const pb = document.getElementById(`prog-${wId}-${d}`);
+          if (pb) pb.querySelector('.day-progress-fill').style.width = pct + '%';
+
+          // Update header counter
+          const cardEl = row.closest('.day-card');
+          if (cardEl) {
+            const counter = cardEl.querySelector('.day-header span[style*="font-mono"]');
+            if (counter) { counter.textContent = `${done}/${tot}`; counter.style.color = done===tot ? 'var(--accent3)' : 'var(--muted)'; }
+            cardEl.classList.toggle('day-done', done === tot);
+          }
+
+          if (isNowChecked && done === tot) showToast('🔥 Day complete!');
+        });
+        list.appendChild(row);
+      });
+      body.appendChild(list);
+
+      if (dayData.rounds) {
+        const ri = document.createElement('div');
+        ri.className = 'round-info';
+        ri.innerHTML = `
+          <span class="round-chip">🔄 ${dayData.rounds}</span>
+          ${dayData.rest ? `<span class="round-chip">⏱ ${dayData.rest}</span>` : ''}
+          ${totalEx > 0 ? `<span class="reset-link" data-week="${week.id}" data-day="${dayName}" data-total="${totalEx}">↺ reset</span>` : ''}`;
+        body.appendChild(ri);
+      }
+    }
+
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+  mc.appendChild(grid);
+
+  // Reset listeners
+  mc.querySelectorAll('.reset-link').forEach(link => {
+    link.addEventListener('click', e => {
+      e.stopPropagation();
+      const wId = parseInt(link.dataset.week);
+      const d = link.dataset.day;
+      const tot = parseInt(link.dataset.total);
+      resetDayChecks(wId, d, tot);
+      renderWeek(week);
+    });
+  });
+
+  // ── TRACKER ──
+  const trackerSec = document.createElement('div');
+  trackerSec.className = 'tracker-section';
+  trackerSec.innerHTML = `<div class="tracker-title">// Accountability Tracker</div>`;
+  const tGrid = document.createElement('div');
+  tGrid.className = 'tracker-grid';
+
+  MEMBERS.forEach(member => {
+    const row = document.createElement('div');
+    row.className = 'tracker-row';
+    row.id = `tracker-${week.id}-${member.id}`;
+
+    let doneCount = 0;
+    const dotsHtml = SHORT_DAYS.map((sd, i) => {
+      const val = getTracking(week.id, member.id, sd);
+      if (val === 'Done') doneCount++;
+      const cls = val === 'Done' ? 'done' : val === 'Rest' ? 'rest' : 'none';
+      const label = val === 'Done' ? '✓' : val === 'Rest' ? '–' : sd.slice(0,1);
+      return `<div class="status-dot ${cls}" data-week="${week.id}" data-member="${member.id}" data-day="${sd}" title="${DAY_ORDER[i]}: ${val||'not set'}">${label}</div>`;
+    }).join('');
+
+    const msg = getStatusMsg(doneCount);
+    row.innerHTML = `
+      <div class="member-avatar" style="background:${member.color}22;color:${member.color};border:1px solid ${member.color}44">${member.initials}</div>
+      <div class="member-name" style="color:${member.color}">${member.name}</div>
+      <div class="day-dots-row">${dotsHtml}</div>
+      <div class="member-count">${doneCount}/6</div>
+      <div class="status-msg ${msg.cls}">${msg.text}</div>`;
+    tGrid.appendChild(row);
+  });
+
+  trackerSec.appendChild(tGrid);
+  mc.appendChild(trackerSec);
+
+  mc.querySelectorAll('.status-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const { week: wId, member, day } = dot.dataset;
+      const newVal = toggleTracking(parseInt(wId), member, day);
+      dot.className = `status-dot ${newVal === 'Done' ? 'done' : newVal === 'Rest' ? 'rest' : 'none'}`;
+      dot.textContent = newVal === 'Done' ? '✓' : newVal === 'Rest' ? '–' : day.slice(0,1);
+      const rowEl = document.getElementById(`tracker-${wId}-${member}`);
+      if (rowEl) {
+        let cnt = 0;
+        rowEl.querySelectorAll('.status-dot.done').forEach(() => cnt++);
+        rowEl.querySelector('.member-count').textContent = `${cnt}/6`;
+        const m = getStatusMsg(cnt);
+        const msgEl = rowEl.querySelector('.status-msg');
+        msgEl.className = `status-msg ${m.cls}`;
+        msgEl.textContent = m.text;
+      }
+      showToast(newVal === 'Done' ? '✓ Marked done!' : newVal === 'Rest' ? '— Rest day' : 'Cleared');
+    });
+  });
+
+  // Equipment + Stretches
+  const equip = document.createElement('div');
+  equip.className = 'equip-section';
+  equip.innerHTML = `<div class="equip-title">// Member Equipment</div><div class="equip-grid">
+    ${MEMBER_EQUIPMENT.map(e=>`<div class="equip-row"><div class="equip-name">${e.name}</div><div class="equip-items">${e.items}</div></div>`).join('')}
+  </div>`;
+  mc.appendChild(equip);
+
+  const stretch = document.createElement('div');
+  stretch.className = 'stretch-section';
+  stretch.innerHTML = `<div class="stretch-title">// Warm-Up / Cool-Down Stretches</div>
+  <div class="stretch-pills">${STRETCHES.map(s=>`<span class="stretch-pill">${s}</span>`).join('')}</div>`;
+  mc.appendChild(stretch);
+}
+
+function renderBonus() {
+  const mc = document.getElementById('mainContent');
+  mc.innerHTML = '';
+  mc.className = 'fade-in';
+  mc.innerHTML = `<div class="bonus-header"><h2>⚡ Bonus Weeks</h2><p>AI-generated progression based on your program structure</p></div>`;
+  BONUS_WEEKS.forEach(bw => {
+    const card = document.createElement('div');
+    card.className = 'bonus-week-card';
+    card.innerHTML = `
+      <div class="bonus-week-title">${bw.label}</div>
+      <div class="bonus-week-desc">${bw.desc}</div>
+      <div class="bonus-days">${bw.days.map(d=>`
+        <div class="bonus-day-row">
+          <div class="bonus-day-label">${d.day}</div>
+          <div class="bonus-exercises">${d.exercises.map(e=>`<span class="bonus-ex-chip">${e}</span>`).join('')}</div>
+          <div class="bonus-rounds">${d.rounds}</div>
+        </div>`).join('')}
+      </div>`;
+    mc.appendChild(card);
+  });
+}
+
+function renderAll() {
+  renderNav();
+  if (currentWeek === 'bonus') { renderBonus(); }
+  else { const w = WEEKS.find(w=>w.id===currentWeek); if(w) renderWeek(w); }
+  updateBottomBar();
+}
+
+function updateBottomBar() {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const d = new Date();
+  document.getElementById('todayIndicator').innerHTML = `Today: <strong>${days[d.getDay()]} · Wk ${currentWeek}</strong>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AI COACH
+// ══════════════════════════════════════════════════════════════════
+
+const COACH_QUICK_PROMPTS = [
+  "Sub for KB swings?",
+  "No bench today — alternatives?",
+  "Should I add weight or rounds?",
+  "My lower back is tight",
+  "Generate next week's workout",
+  "How's the group doing?",
+  "Best warmup for today?",
+  "I only have 20 minutes",
+];
+
+let coachHistory = [];  // {role, content}
+let coachTyping  = false;
+
+// ── Key management ──────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('tmd-apikey') || ''; }
+function saveApiKey() {
+  const v = document.getElementById('coachApiInput').value.trim();
+  if (!v.startsWith('sk-')) { showToast('Key should start with sk-ant-…'); return; }
+  localStorage.setItem('tmd-apikey', v);
+  document.getElementById('coachApiBar').style.display = 'none';
+  document.getElementById('coachHeadSub').textContent = 'Claude · ready ✓';
+  document.getElementById('coachSendBtn').disabled = false;
+  document.getElementById('coachInput').disabled = false;
+  showToast('✓ API key saved!');
+  coachGreet();
+}
+
+// ── Build system context ─────────────────────────────────────────
+function buildSystemPrompt() {
+  // My equipment
+  const myEq = getMyEquipment();
+  const eqNames = myEq.length
+    ? myEq.map(id => EQUIPMENT_CATALOG.find(e => e.id === id)?.label || id).join(', ')
+    : 'not specified';
+
+  // Current week summary
+  const wk = WEEKS.find(w => w.id === currentWeek);
+  let wkSummary = wk ? `Current week: ${wk.label} (${wk.dates})\n` : '';
+  if (wk) {
+    const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    DAY_NAMES.forEach(d => {
+      const dd = wk.days[d];
+      if (!dd || dd.type === 'rest' || dd.cardio) return;
+      const exList = (dd.exercises||[]).map(([n,r]) => `${n} ${r}`).join(', ');
+      wkSummary += `  ${d} (${dd.tag}): ${exList} — ${dd.rounds}\n`;
+    });
+  }
+
+  // All weeks overview
+  const allWksSummary = WEEKS.map(w => {
+    const days = Object.entries(w.days)
+      .filter(([,d]) => d.exercises?.length)
+      .map(([dn,d]) => `${dn}: ${d.exercises.map(([n])=>n).join('/')}`)
+      .join(' | ');
+    return `${w.label}: ${days}`;
+  }).join('\n');
+
+  // Tracking summary
+  const trSummary = MEMBERS.map(m => {
+    const wkStats = WEEKS.map(w => {
+      const cnt = ['Mon','Tue','Wed','Thu','Fri','Sat'].filter(d => {
+        const k = `tr-${w.id}-${m.id}-${d}`;
+        const raw = savedState[k];
+        if (raw !== undefined) return raw === 'Done';
+        const mk = Object.keys(w.tracking).find(k2 => k2.toLowerCase() === m.id);
+        return mk && w.tracking[mk][d] === 'Done';
+      }).length;
+      return `${w.label}:${cnt}/6`;
+    }).join(', ');
+    return `${m.name}: ${wkStats}`;
+  }).join('\n');
+
+  return `You are the Tomodachi Workout Coach — a friendly, knowledgeable, direct fitness coach for a 4-person accountability group.
+
+GROUP MEMBERS: David, Alex, Jon, Joe
+PROGRAM: 7-week progressive circuit training (+ 3 bonus weeks). Goal: 4–5 workouts/week. Style: circuit rounds with rest, progressing from 5 rounds/1.5-min rest to 10 rounds/1-min rest. Saturday = MAF cardio (≤148 BPM).
+
+THE USER'S EQUIPMENT: ${eqNames}
+
+${wkSummary}
+ALL WEEKS OVERVIEW:
+${allWksSummary}
+
+TRACKING DATA (workouts completed per week):
+${trSummary}
+
+YOUR ROLE:
+- Answer questions about the program, exercises, substitutions, and progression
+- Suggest exercise substitutions when someone lacks equipment — always offer 2-3 options
+- Flag if an exercise needs equipment the user doesn't have and give bodyweight alternatives
+- Generate new workout weeks on request, following the program's progression logic
+- Give accountability summaries and motivational nudges based on tracking data
+- Answer general fitness questions (form, injury prevention, MAF cardio, etc.)
+
+TONE: Direct, encouraging, no fluff. Use casual language — this is a friend group. You can be slightly irreverent (the group literally named a week "I failed you all"). Keep responses concise — this is a mobile app.
+
+FORMAT: Use short paragraphs. For exercise lists use bullet points. For substitutions, use a clear "SWAP:" label. Don't use markdown headers — keep it conversational.`;
+}
+
+// ── Greeting ────────────────────────────────────────────────────
+function coachGreet() {
+  const wk = WEEKS.find(w => w.id === currentWeek);
+  const greet = wk
+    ? `Hey! I'm your Tomodachi Coach 👊 I've got your full ${wk.label} workout loaded up, plus all your equipment. Ask me anything — substitutions, progression, form tips, or if you just need someone to tell you to stop slacking.`
+    : `Hey! Tomodachi Coach here. I've got the full program context. Ask me about substitutions, progression, form, or generate a new week.`;
+  appendCoachMsg('coach', greet);
+}
+
+// ── Open / Close ─────────────────────────────────────────────────
+function coachOpen() {
+  document.getElementById('coachOverlay').classList.add('open');
+  document.getElementById('coachDrawer').classList.add('open');
+
+  const hasKey = !!getApiKey();
+  document.getElementById('coachApiBar').style.display = hasKey ? 'none' : 'block';
+  document.getElementById('coachSendBtn').disabled = !hasKey;
+  const inp = document.getElementById('coachInput');
+  inp.disabled = !hasKey;
+  if (hasKey) inp.disabled = false;
+
+  if (hasKey) document.getElementById('coachHeadSub').textContent = 'Claude · ready ✓';
+
+  renderCoachCtx();
+  renderQuickPrompts();
+
+  if (hasKey && coachHistory.length === 0) coachGreet();
+
+  setTimeout(() => inp.focus(), 400);
+}
+
+function coachClose() {
+  document.getElementById('coachOverlay').classList.remove('open');
+  document.getElementById('coachDrawer').classList.remove('open');
+}
+
+// ── Context chips ────────────────────────────────────────────────
+function renderCoachCtx() {
+  const wk = WEEKS.find(w => w.id === currentWeek);
+  const myEq = getMyEquipment();
+  const chips = [
+    { label: wk ? `📅 ${wk.label}` : '📅 Bonus Weeks', on: true },
+    { label: `🏋 ${myEq.length} gear items`, on: myEq.length > 0 },
+    { label: `👥 4 members`, on: true },
+    { label: `📊 Tracking loaded`, on: true },
+    { label: `⚡ 10 weeks total`, on: true },
+  ];
+  document.getElementById('coachCtx').innerHTML = chips
+    .map(c => `<span class="ctx-chip${c.on?' on':''}">${c.label}</span>`)
+    .join('');
+}
+
+// ── Quick prompts ────────────────────────────────────────────────
+function renderQuickPrompts() {
+  document.getElementById('coachQuick').innerHTML = COACH_QUICK_PROMPTS
+    .map(p => `<button class="qp" onclick="useQuickPrompt(this)">${p}</button>`)
+    .join('');
+}
+
+function useQuickPrompt(btn) {
+  const txt = btn.textContent;
+  document.getElementById('coachInput').value = txt;
+  document.getElementById('coachInput').dispatchEvent(new Event('input'));
+  coachSend();
+}
+
+// ── Messages ─────────────────────────────────────────────────────
+function appendCoachMsg(role, content, isTyping = false) {
+  const msgs = document.getElementById('coachMsgs');
+  const div = document.createElement('div');
+  div.className = `cmsg ${role}`;
+  div.id = isTyping ? 'coachTypingBubble' : '';
+
+  const avLabel = role === 'coach' ? '🤖' : (getMyEquipment().length ? '💪' : '?');
+  const html = role === 'coach'
+    ? `<div class="cav">${avLabel}</div><div class="cbubble">${isTyping ? '<div class="typing-dots"><span></span><span></span><span></span></div>' : renderCoachMarkdown(content)}</div>`
+    : `<div class="cbubble">${escapeHtml(content)}</div><div class="cav" style="font-size:11px;color:var(--muted)">${avLabel}</div>`;
+
+  div.innerHTML = html;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function renderCoachMarkdown(text) {
+  // Basic markdown → HTML for coach responses
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')  // escape first
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em style="color:var(--accent3);font-style:normal;font-weight:700">$1</em>')
+    .replace(/^SWAP:\s*(.+)$/gm,'<div class="subst-block"><div class="subst-title">↔ Substitution</div>$1</div>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(.+)$/,'<p>$1</p>');
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Send message ──────────────────────────────────────────────────
+async function coachSend() {
+  const inp = document.getElementById('coachInput');
+  const msg = inp.value.trim();
+  if (!msg || coachTyping) return;
+
+  const key = getApiKey();
+  if (!key) { showToast('Add your API key first ↑'); return; }
+
+  inp.value = '';
+  inp.style.height = 'auto';
+  document.getElementById('coachSendBtn').disabled = true;
+
+  appendCoachMsg('user', msg);
+  coachHistory.push({ role: 'user', content: msg });
+
+  // Typing indicator
+  coachTyping = true;
+  const typingEl = appendCoachMsg('coach', '', true);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: buildSystemPrompt(),
+        messages: coachHistory,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.content?.[0]?.text || '(no response)';
+
+    // Remove typing bubble, add real reply
+    typingEl.remove();
+    coachTyping = false;
+    appendCoachMsg('coach', reply);
+    coachHistory.push({ role: 'assistant', content: reply });
+
+    // Keep history from growing too large (last 20 messages)
+    if (coachHistory.length > 20) coachHistory = coachHistory.slice(-20);
+
+  } catch (err) {
+    typingEl.remove();
+    coachTyping = false;
+    const errMsg = err.message.includes('401')
+      ? 'Invalid API key. Tap the key icon to update it.'
+      : `Error: ${err.message}`;
+    appendCoachMsg('coach', `⚠️ ${errMsg}`);
+  }
+
+  document.getElementById('coachSendBtn').disabled = false;
+  inp.focus();
+}
+
+// ── Auto-resize textarea ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('coachInput');
+  if (inp) {
+    inp.addEventListener('input', () => {
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 90) + 'px';
+      document.getElementById('coachSendBtn').disabled = inp.value.trim() === '' || !getApiKey();
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachSend(); }
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// END AI COACH
+// ══════════════════════════════════════════════════════════════════
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+// Init
+renderAll();
+</script>
+</body>
+</html>
