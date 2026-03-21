@@ -263,6 +263,9 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 .day-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-align: right; flex-shrink: 0; }
 
 .day-body { padding: 0 16px 16px; }
+.day-body.collapsed { display: none; }
+.day-header .expand-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; margin-left: 6px; }
+.day-header .expand-arrow.open { transform: rotate(90deg); }
 
 /* ── EXERCISE LIST WITH ROUND GRID ── */
 .exercise-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -787,8 +790,9 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
   <div class="en-title">Tomodachi Accountability Act</div>
   <div class="subtitle-bar">
     <span class="pill live">4 Members Active</span>
-    <span class="pill">7 Weeks Logged</span>
-    <span class="pill btn-pill" id="equipBtn" onclick="openEquipModal()">⚙ My Equipment</span>
+    <span class="pill" id="weekCountPill">7 Weeks Logged</span>
+    <span class="pill btn-pill" onclick="currentWeek=BONUS_WEEKS.length?BONUS_WEEKS[BONUS_WEEKS.length-1].id:WEEKS[WEEKS.length-1].id;renderAll()">↗ Latest Week</span>
+    <span class="pill btn-pill" id="equipBtn" onclick="openEquipModal()">⚙ Settings</span>
   </div>
 </header>
 
@@ -818,6 +822,14 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
     <div class="equip-checkgroup" id="equipChecklist"></div>
 
     <button class="save-btn" onclick="saveEquipment()">Save My Setup</button>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="save-btn" style="background:var(--accent2);font-size:11px;padding:10px" onclick="exportData()">⬇ Export Data</button>
+      <label class="save-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;padding:10px;cursor:pointer;text-align:center">
+        ⬆ Import Data
+        <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+      </label>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:8px;text-align:center">Backup all tracking, pins & settings as JSON</div>
   </div>
 </div>
 
@@ -877,6 +889,7 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
       <div class="coach-headtitle">Tomodachi Coach</div>
       <div class="coach-headsub" id="coachHeadSub">Powered by Claude · ask anything</div>
     </div>
+    <button class="coach-x" onclick="coachClearChat()" title="Clear chat" style="font-size:14px;margin-right:4px">🗑</button>
     <button class="coach-x" onclick="coachClose()">✕</button>
   </div>
 
@@ -1061,6 +1074,9 @@ let S = loadState();
 function getProfile() {
   return { name: S._profileName || '', equipment: S._equipment || ['floor'] };
 }
+function getMyEquipment() {
+  return getProfile().equipment || ['floor'];
+}
 function saveProfile(name, equip) {
   S._profileName = name;
   S._equipment = equip;
@@ -1210,6 +1226,55 @@ document.getElementById('equipModal').addEventListener('click', function(e) {
   if (e.target === this) closeEquipModal();
 });
 
+// ── Data Export/Import ──────────────────────────────────────────
+function exportData() {
+  const data = {
+    _exportDate: new Date().toISOString(),
+    _appVersion: 'tomodachi-v3',
+    state: S,
+    sharedVideos: sharedVideos,
+    binId: localStorage.getItem('tmd-binid') || null,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tomodachi-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Backup downloaded!');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.state || !data._appVersion) {
+        showToast('⚠ Invalid backup file');
+        return;
+      }
+      S = data.state;
+      saveState(S);
+      if (data.sharedVideos) {
+        sharedVideos = data.sharedVideos;
+        localStorage.setItem('tmd-vidcache', JSON.stringify(sharedVideos));
+      }
+      if (data.binId) localStorage.setItem('tmd-binid', data.binId);
+      closeEquipModal();
+      renderAll();
+      refreshAllVidButtons();
+      showToast('✓ Data restored!');
+    } catch (err) {
+      showToast('⚠ Failed to read backup file');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be re-imported
+}
+
 // ────────────────────────────────────────────
 // RENDER
 // ────────────────────────────────────────────
@@ -1249,11 +1314,14 @@ function renderNav() {
     btn.onclick = () => { currentWeek = w.id; renderAll(); };
     nav.appendChild(btn);
   });
-  const bonus = document.createElement('button');
-  bonus.className = 'nav-btn bonus' + (currentWeek === 'bonus' ? ' active' : '');
-  bonus.textContent = '+ Bonus Weeks';
-  bonus.onclick = () => { currentWeek = 'bonus'; renderAll(); };
-  nav.appendChild(bonus);
+  // Bonus weeks get their own nav buttons
+  BONUS_WEEKS.forEach(bw => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn bonus' + (currentWeek === bw.id ? ' active' : '');
+    btn.textContent = `Wk ${bw.id}`;
+    btn.onclick = () => { currentWeek = bw.id; renderAll(); };
+    nav.appendChild(btn);
+  });
 }
 
 function renderMyEquipBanner(mc) {
@@ -1324,12 +1392,22 @@ function renderWeek(week) {
       <div style="display:flex;align-items:center;gap:8px">
         ${doneIndicator}
         <div class="day-meta">${dayData.rounds || (dayData.cardio ? 'Cardio' : 'Rest')}</div>
+        <span class="expand-arrow open">▸</span>
       </div>`;
     card.appendChild(hdr);
 
     // Body
     const body = document.createElement('div');
     body.className = 'day-body';
+    const bodyId = `day-body-${week.id}-${dayName}`;
+    body.id = bodyId;
+
+    // Collapse/expand on header click
+    hdr.addEventListener('click', () => {
+      body.classList.toggle('collapsed');
+      const arrow = hdr.querySelector('.expand-arrow');
+      if (arrow) arrow.classList.toggle('open', !body.classList.contains('collapsed'));
+    });
 
     if (dayData.cardio) {
       body.innerHTML = `
@@ -1483,6 +1561,8 @@ function renderWeek(week) {
       const isNow = toggleRoundCheck(wk, day, exIdx, rIdx);
       box.classList.toggle('checked', isNow);
       if (isNow) box.classList.remove('is-active-round');
+      // Haptic feedback on mobile
+      if (navigator.vibrate) navigator.vibrate(isNow ? 15 : 8);
 
       // Recompute active round
       let activeRound = numRounds;
@@ -1634,39 +1714,94 @@ function renderWeek(week) {
   mc.appendChild(stretch);
 }
 
-function renderBonus() {
-  const mc = document.getElementById('mainContent');
-  mc.innerHTML = '';
-  mc.className = 'fade-in';
-  mc.innerHTML = `<div class="bonus-header"><h2>⚡ Bonus Weeks</h2><p>AI-generated progression based on your program structure</p></div>`;
-  BONUS_WEEKS.forEach(bw => {
-    const card = document.createElement('div');
-    card.className = 'bonus-week-card';
-    card.innerHTML = `
-      <div class="bonus-week-title">${bw.label}</div>
-      <div class="bonus-week-desc">${bw.desc}</div>
-      <div class="bonus-days">${bw.days.map(d=>`
-        <div class="bonus-day-row">
-          <div class="bonus-day-label">${d.day}</div>
-          <div class="bonus-exercises">${d.exercises.map(e=>`<span class="bonus-ex-chip">${e}</span>`).join('')}</div>
-          <div class="bonus-rounds">${d.rounds}</div>
-        </div>`).join('')}
-      </div>`;
-    mc.appendChild(card);
-  });
-}
+// (bonus weeks now render via bonusToWeek + renderWeek)
 
 function renderAll() {
   renderNav();
-  if (currentWeek === 'bonus') { renderBonus(); }
-  else { const w = WEEKS.find(w=>w.id===currentWeek); if(w) renderWeek(w); }
+  // Check regular weeks first
+  const w = WEEKS.find(w => w.id === currentWeek);
+  if (w) {
+    renderWeek(w);
+  } else {
+    // Check bonus weeks — convert to regular week format for full interactivity
+    const bw = BONUS_WEEKS.find(b => b.id === currentWeek);
+    if (bw) {
+      renderWeek(bonusToWeek(bw));
+    }
+  }
   updateBottomBar();
+  // Auto-scroll to today's card after a brief delay for DOM to settle
+  requestAnimationFrame(() => {
+    const todayCard = document.querySelector('.day-card.today');
+    if (todayCard) {
+      todayCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+}
+
+// Convert a BONUS_WEEKS entry to WEEKS format so renderWeek works on it
+const BONUS_DAY_MAP = { MON:'Monday', TUE:'Tuesday', WED:'Wednesday', THU:'Thursday', FRI:'Friday', SAT:'Saturday' };
+const BONUS_TYPE_GUESS = { MON:'push', TUE:'legs', WED:'pull', THU:'pull', FRI:'push', SAT:'cardio' };
+
+function bonusToWeek(bw) {
+  const days = {};
+  const tracking = {};
+  MEMBERS.forEach(m => { tracking[m.name] = { Mon:null, Tue:null, Wed:null, Thu:null, Fri:null, Sat:null }; });
+
+  bw.days.forEach(d => {
+    const fullDay = BONUS_DAY_MAP[d.day] || d.day;
+    const isRest = d.rounds === '—' || d.rounds === 'Recovery' || d.exercises.some(e => /^rest/i.test(e));
+    const isCardio = d.rounds === 'Cardio' || d.exercises.some(e => /maf|run|walk|cardio/i.test(e));
+
+    if (isRest) {
+      days[fullDay] = { tag: 'Rest', type: 'rest' };
+    } else if (isCardio) {
+      days[fullDay] = { tag: 'Cardio', type: 'cardio', cardio: true };
+    } else {
+      // Parse exercises: "KB Deadlift × 8" → ['KB Deadlift', '8 reps']
+      const exercises = d.exercises.map(e => {
+        const parts = e.split(/\s*[×x]\s*/i);
+        if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
+        // Handle "4×10 Bench Press" format
+        const setMatch = e.match(/^(\d+)[×x](\d+)\s+(.+)$/i);
+        if (setMatch) return [setMatch[3].trim(), `${setMatch[1]}×${setMatch[2]}`];
+        return [e, '—'];
+      });
+
+      // Parse rounds from "8 rds / 90s rest"
+      const roundMatch = d.rounds.match(/(\d+)/);
+      const numRounds = roundMatch ? parseInt(roundMatch[1]) : 1;
+      const restMatch = d.rounds.match(/(\d+s?\s*(?:sec|min)?\s*rest)/i);
+
+      days[fullDay] = {
+        tag: bw.label.replace(/Week \d+ — ?/, '').trim() || 'Bonus',
+        type: BONUS_TYPE_GUESS[d.day] || 'push',
+        exercises: exercises,
+        rounds: `${numRounds} rounds`,
+        rest: restMatch ? restMatch[1] : '90 sec rest',
+      };
+    }
+  });
+
+  return {
+    id: bw.id,
+    label: bw.label,
+    dates: bw.dates || 'Bonus',
+    note: bw.desc,
+    days: days,
+    tracking: tracking,
+  };
 }
 
 function updateBottomBar() {
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const d = new Date();
-  document.getElementById('todayIndicator').innerHTML = `Today: <strong>${days[d.getDay()]} · Wk ${currentWeek}</strong>`;
+  const weekLabel = `Wk ${currentWeek}`;
+  const syncIcon = jsonbinReady ? '<span style="color:var(--accent3)">☁</span>' : '<span style="color:var(--gold)">⚡</span>';
+  document.getElementById('todayIndicator').innerHTML = `${syncIcon} <strong>${days[d.getDay()]} · ${weekLabel}</strong>`;
+  // Update header pill
+  const pill = document.getElementById('weekCountPill');
+  if (pill) pill.textContent = `${WEEKS.length + BONUS_WEEKS.length} Weeks Total`;
 }
 
 function showToast(msg) {
@@ -1680,9 +1815,12 @@ function showToast(msg) {
 // VIDEO MODAL + JSONBIN SYNC
 // ══════════════════════════════════════════════════════════════════
 
-// ── JSONBin config — paste your key here ─────────────────────────
-const JSONBIN_KEY  = '$2a$10$0U6RhJYGh7JxQYTQysTPPeKnFTATGk9oYGbbvGyiOielpu5auy4Vy';   // ← paste Master Key
-const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run
+// ── JSONBin config ───────────────────────────────────────────────
+// SETUP: Go to jsonbin.io → sign up → API Keys → Create Key
+//        Paste the $2a$10$... key below. Leave BIN_ID as-is;
+//        the app auto-creates a bin on first load.
+const JSONBIN_KEY  = 'YOUR_JSONBIN_KEY_HERE';   // ← paste Master Key ($2a$10$... format)
+const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run, don't touch
 // ─────────────────────────────────────────────────────────────────
 
 // ── JSONBin API helpers ──────────────────────────────────────────
@@ -1736,17 +1874,20 @@ async function loadSharedVideos() {
       console.log('JSONBin: bin created:', newId);
       sharedVideos = {};
       jsonbinReady = true;
+      showToast('☁ Video library connected!');
     } else {
       const data = await jbFetch(`/b/${binId}/latest`);
       sharedVideos = data.record || {};
       delete sharedVideos._init;
       jsonbinReady = true;
-      console.log('JSONBin: loaded', Object.keys(sharedVideos).length, 'videos');
+      const count = Object.keys(sharedVideos).length;
+      if (count > 0) console.log('JSONBin: loaded', count, 'videos');
     }
   } catch (e) {
     console.error('JSONBin error:', e.message);
     sharedVideos = JSON.parse(localStorage.getItem('tmd-vidcache') || '{}');
     jsonbinReady = false;
+    showToast('⚠ Cloud sync offline — using local cache');
   }
 
   refreshAllVidButtons();
@@ -1763,9 +1904,9 @@ async function saveSharedVideos() {
       method: 'PUT',
       body: JSON.stringify(sharedVideos),
     });
-    console.log('JSONBin: saved successfully');
   } catch (e) {
     console.error('JSONBin save failed:', e.message);
+    showToast('⚠ Sync failed — saved locally');
   }
 }
 
@@ -1899,11 +2040,20 @@ function saveApiKey() {
   if (!v.startsWith('sk-')) { showToast('Key should start with sk-ant-…'); return; }
   localStorage.setItem('tmd-apikey', v);
   document.getElementById('coachApiBar').style.display = 'none';
-  document.getElementById('coachHeadSub').textContent = 'Claude · ready ✓';
+  document.getElementById('coachHeadSub').innerHTML = 'Claude · ready ✓ &nbsp;<span style="color:var(--muted);cursor:pointer;text-decoration:underline" onclick="resetApiKey()">change key</span>';
   document.getElementById('coachSendBtn').disabled = false;
   document.getElementById('coachInput').disabled = false;
   showToast('✓ API key saved!');
   coachGreet();
+}
+function resetApiKey() {
+  localStorage.removeItem('tmd-apikey');
+  document.getElementById('coachApiBar').style.display = 'block';
+  document.getElementById('coachApiInput').value = '';
+  document.getElementById('coachHeadSub').textContent = 'Powered by Claude · add API key';
+  document.getElementById('coachSendBtn').disabled = true;
+  document.getElementById('coachInput').disabled = true;
+  showToast('API key removed');
 }
 
 // ── Build system context ─────────────────────────────────────────
@@ -1916,8 +2066,13 @@ function buildSystemPrompt() {
   const myName = getProfile().name || 'User';
 
   // Current week summary
-  const wk = WEEKS.find(w => w.id === currentWeek);
-  let wkSummary = wk ? `CURRENT WEEK: ${wk.label} (${wk.dates})\n` : 'Current: Bonus Weeks\n';
+  let wk = WEEKS.find(w => w.id === currentWeek);
+  // Also check bonus weeks (convert on the fly for coach context)
+  if (!wk) {
+    const bw = BONUS_WEEKS.find(b => b.id === currentWeek);
+    if (bw) wk = bonusToWeek(bw);
+  }
+  let wkSummary = wk ? `CURRENT WEEK: ${wk.label} (${wk.dates})\n` : 'Current: unknown\n';
   if (wk) {
     const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     DAY_NAMES.forEach(d => {
@@ -2000,7 +2155,7 @@ function coachOpen() {
   inp.disabled = !hasKey;
   if (hasKey) inp.disabled = false;
 
-  if (hasKey) document.getElementById('coachHeadSub').textContent = 'Claude · ready ✓';
+  if (hasKey) document.getElementById('coachHeadSub').innerHTML = 'Claude · ready ✓ &nbsp;<span style="color:var(--muted);cursor:pointer;text-decoration:underline" onclick="resetApiKey()">change key</span>';
 
   renderCoachCtx();
   renderQuickPrompts();
@@ -2013,6 +2168,13 @@ function coachOpen() {
 function coachClose() {
   document.getElementById('coachOverlay').classList.remove('open');
   document.getElementById('coachDrawer').classList.remove('open');
+}
+
+function coachClearChat() {
+  coachHistory = [];
+  document.getElementById('coachMsgs').innerHTML = '';
+  if (getApiKey()) coachGreet();
+  showToast('Chat cleared');
 }
 
 // ── Context chips ────────────────────────────────────────────────
@@ -2111,7 +2273,7 @@ async function coachSend() {
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: buildSystemPrompt(),
         messages: coachHistory,
