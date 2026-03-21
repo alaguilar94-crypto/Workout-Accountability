@@ -1651,7 +1651,7 @@ function showToast(msg) {
 // ══════════════════════════════════════════════════════════════════
 
 // ── JSONBin config — paste your key and bin ID here ──────────────
-const JSONBIN_KEY  = '$2a$10$iHpeys9gxy6e4XINxKNypeUATtqWrRyS/abIIlSDF3zAUWZfWtsxq';   // ← paste Master Key
+const JSONBIN_KEY  = 'YOUR_JSONBIN_KEY_HERE';   // ← paste Master Key
 const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run
 const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
 // ─────────────────────────────────────────────────────────────────
@@ -1672,24 +1672,30 @@ function persistBinId(id) {
 
 // ── JSONBin API helpers ──────────────────────────────────────────
 async function jbFetch(path, opts = {}) {
+  const extraHeaders = opts.headers || {};
+  delete opts.headers;
   const res = await fetch(`${JSONBIN_BASE}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
       'X-Master-Key': JSONBIN_KEY,
-      ...(opts.headers || {}),
+      ...extraHeaders,
     },
   });
-  if (!res.ok) throw new Error(`JSONBin ${res.status}`);
-  return res.json();
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || `JSONBin HTTP ${res.status}`);
+  return json;
 }
 
 // Create a new bin with empty video map
 async function createBin() {
   const data = await jbFetch('/b', {
     method: 'POST',
-    headers: { 'X-Bin-Name': 'tomodachi-videos', 'X-Bin-Private': 'false' },
-    body: JSON.stringify({}),
+    headers: {
+      'X-Bin-Name': 'tomodachi-videos',
+      'X-Bin-Private': 'false',
+    },
+    body: JSON.stringify({ _init: true }),
   });
   const id = data.metadata?.id;
   if (id) persistBinId(id);
@@ -1698,42 +1704,58 @@ async function createBin() {
 
 // Read the shared video map from JSONBin
 async function loadSharedVideos() {
-  const binId = getSavedBinId();
-  if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') {
-    // First run — create the bin
-    const newId = await createBin();
-    sharedVideos = {};
-    jsonbinReady = true;
-    refreshAllVidButtons();
-    return;
-  }
-  try {
-    const data = await jbFetch(`/b/${binId}/latest`);
-    sharedVideos = data.record || {};
-    jsonbinReady = true;
-    refreshAllVidButtons();
-  } catch (e) {
-    console.warn('JSONBin load failed, using local cache', e);
-    // Fall back to localStorage cache
+  // Don't attempt if key hasn't been set
+  if (!JSONBIN_KEY || JSONBIN_KEY === 'YOUR_JSONBIN_KEY_HERE') {
+    console.warn('JSONBin key not set — running in local-only mode');
     sharedVideos = JSON.parse(localStorage.getItem('tmd-vidcache') || '{}');
     jsonbinReady = false;
     refreshAllVidButtons();
+    return;
   }
+
+  const binId = getSavedBinId();
+
+  try {
+    if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') {
+      // First run — create the bin
+      console.log('JSONBin: creating new bin...');
+      const newId = await createBin();
+      console.log('JSONBin: bin created:', newId);
+      sharedVideos = {};
+      jsonbinReady = true;
+    } else {
+      const data = await jbFetch(`/b/${binId}/latest`);
+      sharedVideos = data.record || {};
+      // Strip the _init marker if present
+      delete sharedVideos._init;
+      jsonbinReady = true;
+      console.log('JSONBin: loaded', Object.keys(sharedVideos).length, 'videos');
+    }
+  } catch (e) {
+    console.error('JSONBin error:', e.message);
+    sharedVideos = JSON.parse(localStorage.getItem('tmd-vidcache') || '{}');
+    jsonbinReady = false;
+  }
+
+  refreshAllVidButtons();
 }
 
 // Write the full video map back to JSONBin
 async function saveSharedVideos() {
+  localStorage.setItem('tmd-vidcache', JSON.stringify(sharedVideos));
+
+  if (!JSONBIN_KEY || JSONBIN_KEY === 'YOUR_JSONBIN_KEY_HERE') return;
   const binId = getSavedBinId();
   if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') return;
-  // Always keep a local cache in case network fails
-  localStorage.setItem('tmd-vidcache', JSON.stringify(sharedVideos));
+
   try {
     await jbFetch(`/b/${binId}`, {
       method: 'PUT',
       body: JSON.stringify(sharedVideos),
     });
+    console.log('JSONBin: saved successfully');
   } catch (e) {
-    console.warn('JSONBin save failed — saved locally only', e);
+    console.error('JSONBin save failed:', e.message);
   }
 }
 
