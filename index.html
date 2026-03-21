@@ -1647,24 +1647,127 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// VIDEO MODAL
+// VIDEO MODAL + JSONBIN SYNC
 // ══════════════════════════════════════════════════════════════════
 
-let currentVidExName = '';
+// ── JSONBin config — paste your key and bin ID here ──────────────
+const JSONBIN_KEY  = 'YOUR_JSONBIN_KEY_HERE';   // ← paste Master Key
+const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+// ─────────────────────────────────────────────────────────────────
 
-// Storage
+let currentVidExName = '';
+let sharedVideos = {};      // in-memory cache of the shared library
+let jsonbinReady = false;   // true once bin ID is known
+let savedBinId = null;      // persisted bin ID
+
+// Persist bin ID in localStorage so we only create it once
+function getSavedBinId() {
+  return localStorage.getItem('tmd-binid') || JSONBIN_BIN;
+}
+function persistBinId(id) {
+  localStorage.setItem('tmd-binid', id);
+  savedBinId = id;
+}
+
+// ── JSONBin API helpers ──────────────────────────────────────────
+async function jbFetch(path, opts = {}) {
+  const res = await fetch(`${JSONBIN_BASE}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY,
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`JSONBin ${res.status}`);
+  return res.json();
+}
+
+// Create a new bin with empty video map
+async function createBin() {
+  const data = await jbFetch('/b', {
+    method: 'POST',
+    headers: { 'X-Bin-Name': 'tomodachi-videos', 'X-Bin-Private': 'false' },
+    body: JSON.stringify({}),
+  });
+  const id = data.metadata?.id;
+  if (id) persistBinId(id);
+  return id;
+}
+
+// Read the shared video map from JSONBin
+async function loadSharedVideos() {
+  const binId = getSavedBinId();
+  if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') {
+    // First run — create the bin
+    const newId = await createBin();
+    sharedVideos = {};
+    jsonbinReady = true;
+    refreshAllVidButtons();
+    return;
+  }
+  try {
+    const data = await jbFetch(`/b/${binId}/latest`);
+    sharedVideos = data.record || {};
+    jsonbinReady = true;
+    refreshAllVidButtons();
+  } catch (e) {
+    console.warn('JSONBin load failed, using local cache', e);
+    // Fall back to localStorage cache
+    sharedVideos = JSON.parse(localStorage.getItem('tmd-vidcache') || '{}');
+    jsonbinReady = false;
+    refreshAllVidButtons();
+  }
+}
+
+// Write the full video map back to JSONBin
+async function saveSharedVideos() {
+  const binId = getSavedBinId();
+  if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') return;
+  // Always keep a local cache in case network fails
+  localStorage.setItem('tmd-vidcache', JSON.stringify(sharedVideos));
+  try {
+    await jbFetch(`/b/${binId}`, {
+      method: 'PUT',
+      body: JSON.stringify(sharedVideos),
+    });
+  } catch (e) {
+    console.warn('JSONBin save failed — saved locally only', e);
+  }
+}
+
+// ── Video helpers ────────────────────────────────────────────────
+function vidKey(exName) { return exName.toLowerCase().trim(); }
+
 function getVidOverride(exName) {
-  return S[`vid-${exName.toLowerCase().trim()}`] || null;
+  // Check shared cloud library first, then localStorage fallback
+  return sharedVideos[vidKey(exName)] || S[`vid-${vidKey(exName)}`] || null;
 }
-function setVidOverride(exName, url) {
-  S[`vid-${exName.toLowerCase().trim()}`] = url;
+
+async function setVidOverride(exName, url) {
+  sharedVideos[vidKey(exName)] = url;
+  // Also keep in local state for instant access
+  S[`vid-${vidKey(exName)}`] = url;
   saveState(S);
+  await saveSharedVideos();
 }
-function clearVidOverride() {
-  delete S[`vid-${currentVidExName.toLowerCase().trim()}`];
+
+async function removeVidOverride(exName) {
+  delete sharedVideos[vidKey(exName)];
+  delete S[`vid-${vidKey(exName)}`];
   saveState(S);
-  loadVidModal(currentVidExName);
-  showToast('Video unpinned');
+  await saveSharedVideos();
+}
+
+// Refresh all ▶ buttons to show pinned state after load
+function refreshAllVidButtons() {
+  document.querySelectorAll('.ex-vid-btn').forEach(btn => {
+    const name = decodeURIComponent(btn.dataset.exname || '');
+    const has = !!getVidOverride(name);
+    btn.classList.toggle('pinned', has);
+    btn.title = has ? 'Form video pinned ✓' : 'Watch form guide';
+  });
 }
 
 // Convert any YouTube URL → embed URL
@@ -1678,18 +1781,17 @@ function toYouTubeEmbed(url) {
     } else if (u.hostname.includes('youtube.com')) {
       vid = u.searchParams.get('v');
       if (!vid && u.pathname.includes('/shorts/')) vid = u.pathname.split('/shorts/')[1].split('?')[0];
-      if (!vid && u.pathname.includes('/embed/')) vid = u.pathname.split('/embed/')[1].split('?')[0];
+      if (!vid && u.pathname.includes('/embed/'))  vid = u.pathname.split('/embed/')[1].split('?')[0];
     }
     return vid ? `https://www.youtube.com/embed/${vid}?rel=0&modestbranding=1` : null;
   } catch { return null; }
 }
 
-// Build YouTube search URL for an exercise name
 function youTubeSearchUrl(exName) {
-  const q = encodeURIComponent(exName + ' exercise proper form');
-  return `https://www.youtube.com/results?search_query=${q}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(exName + ' exercise proper form')}`;
 }
 
+// ── Modal open / close / load ────────────────────────────────────
 function openVidModal(exName) {
   currentVidExName = exName;
   loadVidModal(exName);
@@ -1698,26 +1800,29 @@ function openVidModal(exName) {
 
 function loadVidModal(exName) {
   document.getElementById('vidModalTitle').textContent = exName;
-  document.getElementById('vidModalSub').textContent = 'Form & technique guide';
   document.getElementById('vidSearchBtn').href = youTubeSearchUrl(exName);
   document.getElementById('vidUrlInput').value = '';
 
-  const pinned = getVidOverride(exName);
+  const pinned   = getVidOverride(exName);
   const embedUrl = pinned ? toYouTubeEmbed(pinned) : null;
+  const iframe    = document.getElementById('vidIframe');
+  const ph        = document.getElementById('vidPlaceholder');
+  const clearBtn  = document.getElementById('vidClearBtn');
 
-  const iframe = document.getElementById('vidIframe');
-  const placeholder = document.getElementById('vidPlaceholder');
-  const clearBtn = document.getElementById('vidClearBtn');
+  const syncLabel = jsonbinReady
+    ? `<span style="color:var(--accent3)">● synced</span>`
+    : `<span style="color:var(--gold)">● local only</span>`;
+  document.getElementById('vidModalSub').innerHTML = `Form & technique guide &nbsp;·&nbsp; ${syncLabel}`;
 
   if (embedUrl) {
     iframe.src = embedUrl;
     iframe.style.display = 'block';
-    placeholder.style.display = 'none';
+    ph.style.display = 'none';
     clearBtn.style.display = 'block';
   } else {
     iframe.src = '';
     iframe.style.display = 'none';
-    placeholder.style.display = 'flex';
+    ph.style.display = 'flex';
     clearBtn.style.display = 'none';
   }
 }
@@ -1725,25 +1830,32 @@ function loadVidModal(exName) {
 function closeVidModal(e) {
   if (e && e.target !== document.getElementById('vidOverlay')) return;
   document.getElementById('vidOverlay').classList.remove('open');
-  // Stop video playback
   document.getElementById('vidIframe').src = '';
 }
 
-function pinVideo() {
+async function clearVidOverride() {
+  await removeVidOverride(currentVidExName);
+  loadVidModal(currentVidExName);
+  refreshAllVidButtons();
+  showToast('Video unpinned');
+}
+
+async function pinVideo() {
   const url = document.getElementById('vidUrlInput').value.trim();
   if (!url) { showToast('Paste a YouTube URL first'); return; }
   const embed = toYouTubeEmbed(url);
   if (!embed) { showToast('Not a valid YouTube URL'); return; }
-  setVidOverride(currentVidExName, url);
+
+  document.getElementById('vidUrlInput').disabled = true;
+  document.querySelector('.vid-pin-btn').textContent = 'Saving…';
+
+  await setVidOverride(currentVidExName, url);
   loadVidModal(currentVidExName);
-  showToast('✓ Video pinned!');
-  // Refresh vid buttons in the DOM to show pinned state
-  document.querySelectorAll('.ex-vid-btn').forEach(btn => {
-    const name = decodeURIComponent(btn.dataset.exname || '');
-    if (name.toLowerCase() === currentVidExName.toLowerCase()) {
-      btn.classList.add('pinned');
-    }
-  });
+  refreshAllVidButtons();
+
+  document.getElementById('vidUrlInput').disabled = false;
+  document.querySelector('.vid-pin-btn').textContent = 'Pin ✓';
+  showToast(jsonbinReady ? '✓ Pinned & synced to all devices!' : '✓ Pinned locally');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2048,6 +2160,7 @@ if ('serviceWorker' in navigator) {
 
 // Init
 renderAll();
+loadSharedVideos(); // load shared video library from JSONBin
 </script>
 </body>
 </html>
