@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="友達 Workout">
-<meta name="theme-color" content="#ff4d6d">
+<meta name="theme-color" content="#0a0a0f">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 <title>友達 Tomodachi Accountability Act</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -1656,6 +1656,10 @@ const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first ru
 const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
 // ─────────────────────────────────────────────────────────────────
 
+function jsonbinConfigured() {
+  return JSONBIN_KEY && JSONBIN_KEY !== 'YOUR_JSONBIN_KEY_HERE';
+}
+
 let currentVidExName = '';
 let sharedVideos = {};      // in-memory cache of the shared library
 let jsonbinReady = false;   // true once bin ID is known
@@ -1704,8 +1708,7 @@ async function createBin() {
 
 // Read the shared video map from JSONBin
 async function loadSharedVideos() {
-  // Don't attempt if key hasn't been set
-  if (!JSONBIN_KEY || JSONBIN_KEY === 'YOUR_JSONBIN_KEY_HERE') {
+  if (!jsonbinConfigured()) {
     console.warn('JSONBin key not set — running in local-only mode');
     sharedVideos = JSON.parse(localStorage.getItem('tmd-vidcache') || '{}');
     jsonbinReady = false;
@@ -1717,7 +1720,6 @@ async function loadSharedVideos() {
 
   try {
     if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') {
-      // First run — create the bin
       console.log('JSONBin: creating new bin...');
       const newId = await createBin();
       console.log('JSONBin: bin created:', newId);
@@ -1726,7 +1728,6 @@ async function loadSharedVideos() {
     } else {
       const data = await jbFetch(`/b/${binId}/latest`);
       sharedVideos = data.record || {};
-      // Strip the _init marker if present
       delete sharedVideos._init;
       jsonbinReady = true;
       console.log('JSONBin: loaded', Object.keys(sharedVideos).length, 'videos');
@@ -1743,11 +1744,9 @@ async function loadSharedVideos() {
 // Write the full video map back to JSONBin
 async function saveSharedVideos() {
   localStorage.setItem('tmd-vidcache', JSON.stringify(sharedVideos));
-
-  if (!JSONBIN_KEY || JSONBIN_KEY === 'YOUR_JSONBIN_KEY_HERE') return;
+  if (!jsonbinConfigured()) return;
   const binId = getSavedBinId();
   if (!binId || binId === 'YOUR_JSONBIN_BIN_ID_HERE') return;
-
   try {
     await jbFetch(`/b/${binId}`, {
       method: 'PUT',
