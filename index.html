@@ -1128,6 +1128,36 @@ function parseRoundCount(roundsStr) {
 }
 
 // ────────────────────────────────────────────
+// VIDEO / JSONBIN STATE (declared early so render functions can use them)
+// ────────────────────────────────────────────
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+let currentVidExName = '';
+let sharedVideos = {};
+let jsonbinReady = false;
+
+function jsonbinConfigured() {
+  return typeof JSONBIN_KEY !== 'undefined' && JSONBIN_KEY && JSONBIN_KEY !== 'YOUR_JSONBIN_KEY_HERE';
+}
+function getSavedBinId() {
+  const stored = localStorage.getItem('tmd-binid');
+  return stored || (typeof JSONBIN_BIN !== 'undefined' ? JSONBIN_BIN : '');
+}
+function persistBinId(id) { localStorage.setItem('tmd-binid', id); }
+
+function vidKey(exName) { return exName.toLowerCase().trim(); }
+function getVidOverride(exName) {
+  return sharedVideos[vidKey(exName)] || S[`vid-${vidKey(exName)}`] || null;
+}
+function refreshAllVidButtons() {
+  document.querySelectorAll('.ex-vid-btn').forEach(btn => {
+    const name = decodeURIComponent(btn.dataset.exname || '');
+    const has = !!getVidOverride(name);
+    btn.classList.toggle('pinned', has);
+    btn.title = has ? 'Form video pinned ✓' : 'Watch form guide';
+  });
+}
+
+// ────────────────────────────────────────────
 // EQUIPMENT MODAL
 // ────────────────────────────────────────────
 function buildEquipChecklist() {
@@ -1650,29 +1680,10 @@ function showToast(msg) {
 // VIDEO MODAL + JSONBIN SYNC
 // ══════════════════════════════════════════════════════════════════
 
-// ── JSONBin config — paste your key and bin ID here ──────────────
-const JSONBIN_KEY  = '$2a$10$iHpeys9gxy6e4XINxKNypeUATtqWrRyS/abIIlSDF3zAUWZfWtsxq;   // ← paste Master Key
+// ── JSONBin config — paste your key here ─────────────────────────
+const JSONBIN_KEY  = 'YOUR_JSONBIN_KEY_HERE';   // ← paste Master Key
 const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
 // ─────────────────────────────────────────────────────────────────
-
-function jsonbinConfigured() {
-  return JSONBIN_KEY && JSONBIN_KEY !== 'YOUR_JSONBIN_KEY_HERE';
-}
-
-let currentVidExName = '';
-let sharedVideos = {};      // in-memory cache of the shared library
-let jsonbinReady = false;   // true once bin ID is known
-let savedBinId = null;      // persisted bin ID
-
-// Persist bin ID in localStorage so we only create it once
-function getSavedBinId() {
-  return localStorage.getItem('tmd-binid') || JSONBIN_BIN;
-}
-function persistBinId(id) {
-  localStorage.setItem('tmd-binid', id);
-  savedBinId = id;
-}
 
 // ── JSONBin API helpers ──────────────────────────────────────────
 async function jbFetch(path, opts = {}) {
@@ -1759,16 +1770,8 @@ async function saveSharedVideos() {
 }
 
 // ── Video helpers ────────────────────────────────────────────────
-function vidKey(exName) { return exName.toLowerCase().trim(); }
-
-function getVidOverride(exName) {
-  // Check shared cloud library first, then localStorage fallback
-  return sharedVideos[vidKey(exName)] || S[`vid-${vidKey(exName)}`] || null;
-}
-
 async function setVidOverride(exName, url) {
   sharedVideos[vidKey(exName)] = url;
-  // Also keep in local state for instant access
   S[`vid-${vidKey(exName)}`] = url;
   saveState(S);
   await saveSharedVideos();
@@ -1779,16 +1782,6 @@ async function removeVidOverride(exName) {
   delete S[`vid-${vidKey(exName)}`];
   saveState(S);
   await saveSharedVideos();
-}
-
-// Refresh all ▶ buttons to show pinned state after load
-function refreshAllVidButtons() {
-  document.querySelectorAll('.ex-vid-btn').forEach(btn => {
-    const name = decodeURIComponent(btn.dataset.exname || '');
-    const has = !!getVidOverride(name);
-    btn.classList.toggle('pinned', has);
-    btn.title = has ? 'Form video pinned ✓' : 'Watch form guide';
-  });
 }
 
 // Convert any YouTube URL → embed URL
