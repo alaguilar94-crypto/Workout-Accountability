@@ -308,6 +308,11 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 .status-dot.rest { background: var(--surface2); border-color: var(--border); color: var(--muted); }
 .status-dot.none { background: transparent; border-color: var(--border)55; color: var(--border); }
 .status-dot:hover { transform: scale(1.1); }
+.status-dot.nudged { position: relative; }
+.status-dot.nudged::after {
+  content: '👊'; position: absolute; top: -6px; right: -6px;
+  font-size: 8px; line-height: 1;
+}
 .member-count { font-family: var(--font-mono); font-size: 10px; color: var(--muted); min-width: 28px; text-align: right; }
 .status-msg { font-size: 10px; font-family: var(--font-mono); min-width: 110px; text-align: right; flex-shrink: 0; }
 .status-msg.good { color: var(--done); }
@@ -1280,21 +1285,119 @@ function saveProfile(name, equip) {
 }
 
 // Tracking
+// ── Shared tracker state ──
+let sharedTracker = {};  // { 'w1-david-Mon': { val: 'Done', by: 'david' }, ... }
+let trackerBinReady = false;
+
+function getTrackerBinId() {
+  return localStorage.getItem('tmd-tracker-binid') || '';
+}
+function persistTrackerBinId(id) { localStorage.setItem('tmd-tracker-binid', id); }
+
+// Identify current user by matching profile name to MEMBERS
+function getMyMemberId() {
+  const name = (getProfile().name || '').toLowerCase().trim();
+  const m = MEMBERS.find(m => m.name.toLowerCase() === name || m.id === name);
+  return m ? m.id : null;
+}
+
+async function createTrackerBin() {
+  const data = await jbFetch('/b', {
+    method: 'POST',
+    headers: { 'X-Bin-Name': 'tomodachi-tracker', 'X-Bin-Private': 'false' },
+    body: JSON.stringify({ _init: true }),
+  });
+  const id = data.metadata?.id;
+  if (id) persistTrackerBinId(id);
+  return id;
+}
+
+async function loadSharedTracker() {
+  if (!jsonbinConfigured()) {
+    sharedTracker = JSON.parse(localStorage.getItem('tmd-trackercache') || '{}');
+    trackerBinReady = false;
+    return;
+  }
+  const binId = getTrackerBinId();
+  try {
+    if (!binId) {
+      const newId = await createTrackerBin();
+      sharedTracker = {};
+      trackerBinReady = true;
+      showToast('☁ Tracker connected!');
+    } else {
+      const data = await jbFetch(`/b/${binId}/latest`);
+      sharedTracker = data.record || {};
+      delete sharedTracker._init;
+      trackerBinReady = true;
+    }
+  } catch (e) {
+    console.error('Tracker load error:', e.message);
+    sharedTracker = JSON.parse(localStorage.getItem('tmd-trackercache') || '{}');
+    trackerBinReady = false;
+  }
+}
+
+async function saveSharedTracker() {
+  localStorage.setItem('tmd-trackercache', JSON.stringify(sharedTracker));
+  if (!jsonbinConfigured()) return;
+  const binId = getTrackerBinId();
+  if (!binId) return;
+  try {
+    await jbFetch(`/b/${binId}`, {
+      method: 'PUT',
+      body: JSON.stringify(sharedTracker),
+    });
+  } catch (e) {
+    console.error('Tracker save failed:', e.message);
+    showToast('⚠ Tracker sync failed — saved locally');
+  }
+}
+
+function trackerKey(weekId, member, day) {
+  return `w${weekId}-${member}-${day}`;
+}
+
 function getTracking(weekId, member, day) {
-  const key = `w${weekId}-${member}-${day}`;
+  const key = trackerKey(weekId, member, day);
+  // Check shared tracker first
+  if (sharedTracker[key]) return sharedTracker[key].val;
+  // Then local state
   if (S[key] !== undefined) return S[key];
+  // Then hardcoded defaults
   const week = WEEKS.find(w => w.id === weekId);
   if (!week) return null;
   const mk = Object.keys(week.tracking).find(k => k.toLowerCase() === member);
   if (!mk) return null;
   return week.tracking[mk][day] || null;
 }
+
+function getTrackingMeta(weekId, member, day) {
+  const key = trackerKey(weekId, member, day);
+  return sharedTracker[key] || null;
+}
+
 function toggleTracking(weekId, member, day) {
-  const key = `w${weekId}-${member}-${day}`;
+  const key = trackerKey(weekId, member, day);
   const cur = getTracking(weekId, member, day);
   const next = cur === null ? 'Done' : cur === 'Done' ? 'Rest' : null;
+  const myId = getMyMemberId();
+  const isOwnRow = myId === member;
+
+  // Save to shared tracker with who made the change
+  if (next === null) {
+    delete sharedTracker[key];
+  } else {
+    sharedTracker[key] = {
+      val: next,
+      by: myId || 'unknown',
+      nudge: !isOwnRow,
+    };
+  }
+  // Also keep in local state for instant access
   S[key] = next;
   saveState(S);
+  saveSharedTracker();
   return next;
 }
 
@@ -2016,20 +2119,27 @@ function renderWeek(week) {
     const row = document.createElement('div');
     row.className = 'tracker-row';
     row.id = `tracker-${week.id}-${member.id}`;
+    const myId = getMyMemberId();
+    const isMe = myId === member.id;
+    if (isMe) row.style.borderColor = 'var(--accent3)44';
 
     let doneCount = 0;
     const dotsHtml = SHORT_DAYS.map((sd, i) => {
       const val = getTracking(week.id, member.id, sd);
+      const meta = getTrackingMeta(week.id, member.id, sd);
       if (val === 'Done') doneCount++;
       const cls = val === 'Done' ? 'done' : val === 'Rest' ? 'rest' : 'none';
       const label = val === 'Done' ? '✓' : val === 'Rest' ? '–' : sd.slice(0,1);
-      return `<div class="status-dot ${cls}" data-week="${week.id}" data-member="${member.id}" data-day="${sd}" title="${DAY_ORDER[i]}: ${val||'not set'}">${label}</div>`;
+      const nudgeAttr = (meta && meta.nudge) ? ' data-nudge="true"' : '';
+      const nudgeCls = (meta && meta.nudge) ? ' nudged' : '';
+      return `<div class="status-dot ${cls}${nudgeCls}" data-week="${week.id}" data-member="${member.id}" data-day="${sd}"${nudgeAttr} title="${DAY_ORDER[i]}: ${val||'not set'}${meta?.nudge ? ' (nudged by '+meta.by+')' : ''}">${label}</div>`;
     }).join('');
 
     const msg = getStatusMsg(doneCount);
+    const meTag = isMe ? '<span style="font-size:8px;color:var(--accent3);font-family:var(--font-mono);margin-left:4px">YOU</span>' : '';
     row.innerHTML = `
       <div class="member-avatar" style="background:${member.color}22;color:${member.color};border:1px solid ${member.color}44">${member.initials}</div>
-      <div class="member-name" style="color:${member.color}">${member.name}</div>
+      <div class="member-name" style="color:${member.color}">${member.name}${meTag}</div>
       <div class="day-dots-row">${dotsHtml}</div>
       <div class="member-count">${doneCount}/6</div>
       <div class="status-msg ${msg.cls}">${msg.text}</div>`;
@@ -2042,8 +2152,11 @@ function renderWeek(week) {
   mc.querySelectorAll('.status-dot').forEach(dot => {
     dot.addEventListener('click', () => {
       const { week: wId, member, day } = dot.dataset;
+      const myId = getMyMemberId();
+      const isOwnRow = myId === member;
+
       const newVal = toggleTracking(parseInt(wId), member, day);
-      dot.className = `status-dot ${newVal === 'Done' ? 'done' : newVal === 'Rest' ? 'rest' : 'none'}`;
+      dot.className = `status-dot ${newVal === 'Done' ? 'done' : newVal === 'Rest' ? 'rest' : 'none'}${!isOwnRow && newVal ? ' nudged' : ''}`;
       dot.textContent = newVal === 'Done' ? '✓' : newVal === 'Rest' ? '–' : day.slice(0,1);
       const rowEl = document.getElementById(`tracker-${wId}-${member}`);
       if (rowEl) {
@@ -2055,7 +2168,12 @@ function renderWeek(week) {
         msgEl.className = `status-msg ${m.cls}`;
         msgEl.textContent = m.text;
       }
-      showToast(newVal === 'Done' ? '✓ Marked done!' : newVal === 'Rest' ? '— Rest day' : 'Cleared');
+      if (isOwnRow) {
+        showToast(newVal === 'Done' ? '✓ Marked done!' : newVal === 'Rest' ? '— Rest day' : 'Cleared');
+      } else {
+        const memberName = MEMBERS.find(m => m.id === member)?.name || member;
+        showToast(newVal === 'Done' ? `👊 Nudged ${memberName} → Done` : newVal === 'Rest' ? `Nudged ${memberName} → Rest` : `Cleared ${memberName}'s status`);
+      }
     });
   });
 
@@ -2817,6 +2935,7 @@ if ('serviceWorker' in navigator) {
 // Init
 renderAll();
 loadSharedVideos(); // load shared video library from JSONBin
+loadSharedTracker().then(() => renderAll()); // load shared tracker, then re-render with synced data
 </script>
 </body>
 </html>
