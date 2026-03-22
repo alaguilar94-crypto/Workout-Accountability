@@ -852,6 +852,34 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 
 /* ── Supplemental inside day cards ── */
 .supp-day-section { margin-top: 14px; }
+.supp-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; margin-bottom: 8px;
+  background: var(--accent3)08; border: 1px dashed var(--accent3)44;
+  border-radius: 10px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  color: var(--accent3); letter-spacing: 0.5px;
+  transition: all 0.2s; user-select: none;
+}
+.supp-add-btn:hover { background: var(--accent3)15; border-color: var(--accent3)88; }
+.supp-add-btn.has-picks { border-style: solid; background: var(--accent3)0d; }
+.supp-add-icon { font-size: 13px; }
+.supp-picker.collapsed { display: none; }
+.supp-picker-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 0 12px;
+}
+.supp-picker-chip {
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: 11px; color: var(--text); cursor: pointer;
+  transition: all 0.15s; user-select: none;
+}
+.supp-picker-chip:hover { border-color: var(--accent3)88; }
+.supp-picker-chip.active {
+  background: var(--accent3)15; border-color: var(--accent3);
+  color: var(--accent3); font-weight: 700;
+}
 .supp-day-divider {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 12px; padding: 0 2px;
@@ -1705,18 +1733,55 @@ function renderWeek(week) {
         body.appendChild(ri);
       }
 
-      // ── SUPPLEMENTAL EXERCISES (appended after main circuit) ──
-      const dayRoutines = getRoutinesForDay(dayData.type, dayName);
-      if (dayRoutines.length > 0) {
-        const suppSection = document.createElement('div');
-        suppSection.className = 'supp-day-section';
-        suppSection.innerHTML = `<div class="supp-day-divider"><span class="supp-day-divider-line"></span><span class="supp-day-divider-label">＋ SUPPLEMENTAL</span><span class="supp-day-divider-line"></span></div>`;
+      // ── SUPPLEMENTAL INLINE PICKER + EXERCISES ──
+      // Skip for rest and cardio days
+      if (dayData.type !== 'rest' && !dayData.cardio) {
+        const suppWrap = document.createElement('div');
+        suppWrap.className = 'supp-day-section';
+        suppWrap.id = `supp-wrap-${week.id}-${dayName}`;
 
-        dayRoutines.forEach(routine => {
+        // Get this day's picked routines
+        const dayPicks = getSuppDayPicks(dayName);
+        const hasAny = dayPicks.length > 0;
+
+        // Toggle button
+        const toggleBtn = document.createElement('div');
+        toggleBtn.className = 'supp-add-btn' + (hasAny ? ' has-picks' : '');
+        toggleBtn.id = `supp-btn-${week.id}-${dayName}`;
+        toggleBtn.innerHTML = `<span class="supp-add-icon">${hasAny ? '▾' : '＋'}</span> Supplemental${hasAny ? ` (${dayPicks.length})` : ''}`;
+        suppWrap.appendChild(toggleBtn);
+
+        // Inline picker (hidden by default unless already has picks)
+        const pickerWrap = document.createElement('div');
+        pickerWrap.className = 'supp-picker' + (hasAny ? '' : ' collapsed');
+        pickerWrap.id = `supp-picker-${week.id}-${dayName}`;
+
+        // Routine checklist
+        const pickerGrid = document.createElement('div');
+        pickerGrid.className = 'supp-picker-grid';
+
+        SUPP_ROUTINES.forEach(r => {
+          const isOn = dayPicks.includes(r.id);
+          const chip = document.createElement('div');
+          chip.className = 'supp-picker-chip' + (isOn ? ' active' : '');
+          chip.innerHTML = `<span class="supp-cat-dot ${r.type}" style="width:6px;height:6px;display:inline-block;border-radius:50%;margin-right:5px;vertical-align:middle"></span>${r.name}`;
+          chip.addEventListener('click', e => {
+            e.stopPropagation();
+            toggleSuppDayPick(dayName, r.id);
+            renderWeek(week); // re-render to show/hide exercises
+          });
+          pickerGrid.appendChild(chip);
+        });
+        pickerWrap.appendChild(pickerGrid);
+
+        // Render exercises for each picked routine
+        dayPicks.forEach(rid => {
+          const routine = SUPP_ROUTINES.find(r => r.id === rid);
+          if (!routine) return;
           const numSets = routine.sets;
           const rExercises = routine.exercises;
 
-          // Count done for this routine on this day
+          // Count done
           let rDone = 0;
           rExercises.forEach((_, ei) => {
             for (let si = 0; si < numSets; si++) {
@@ -1738,9 +1803,9 @@ function renderWeek(week) {
               <span style="font-family:var(--font-mono);font-size:9px;color:${rAllDone ? 'var(--accent3)' : 'var(--muted)'}">${rDone}/${rTotal}</span>
               <span class="supp-cat-tag">${numSets === 1 ? '1 set' : numSets + ' sets'}</span>
             </div>`;
-          suppSection.appendChild(rHead);
+          pickerWrap.appendChild(rHead);
 
-          // Exercise rows with set checkboxes
+          // Exercise rows
           const sList = document.createElement('div');
           sList.className = 'exercise-list';
 
@@ -1768,17 +1833,26 @@ function renderWeek(week) {
               <div class="round-boxes">${boxes}</div>`;
             sList.appendChild(row);
 
-            // Video button
             row.querySelector('.ex-vid-btn').addEventListener('click', e => {
               e.stopPropagation();
               openVidModal(name);
             });
           });
 
-          suppSection.appendChild(sList);
+          pickerWrap.appendChild(sList);
         });
 
-        body.appendChild(suppSection);
+        suppWrap.appendChild(pickerWrap);
+
+        // Toggle button click — expand/collapse picker
+        toggleBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          pickerWrap.classList.toggle('collapsed');
+          const isOpen = !pickerWrap.classList.contains('collapsed');
+          toggleBtn.querySelector('.supp-add-icon').textContent = isOpen ? '▾' : '＋';
+        });
+
+        body.appendChild(suppWrap);
       }
     }
 
@@ -2006,48 +2080,21 @@ function renderWeek(week) {
 // ────────────────────────────────────────────
 // SUPPLEMENTAL — opt-in state & render
 // ────────────────────────────────────────────
-function getSuppOptIn() {
-  return S._suppOptIn || {};
+// Per-day supplemental picks: S._suppDayPicks = { 'Monday': ['warmup','pull'], ... }
+function getSuppDayPicks(dayName) {
+  return S._suppDayPicks?.[dayName] || [];
 }
-function toggleSuppOptIn(routineId) {
-  if (!S._suppOptIn) S._suppOptIn = {};
-  S._suppOptIn[routineId] = !S._suppOptIn[routineId];
-  saveState(S);
-  return S._suppOptIn[routineId];
-}
-
-// Day overrides: S._suppDayOverride = { 'Monday': ['warmup','pull'], 'Tuesday': ['hinge','core'], ... }
-// null = use auto-assign, array = explicit override
-function getSuppDayOverride(dayName) {
-  return S._suppDayOverride?.[dayName] ?? null;
-}
-function setSuppDayOverride(dayName, routineIds) {
-  if (!S._suppDayOverride) S._suppDayOverride = {};
-  S._suppDayOverride[dayName] = routineIds;
-  saveState(S);
-}
-function clearSuppDayOverride(dayName) {
-  if (S._suppDayOverride) {
-    delete S._suppDayOverride[dayName];
-    saveState(S);
+function toggleSuppDayPick(dayName, routineId) {
+  if (!S._suppDayPicks) S._suppDayPicks = {};
+  if (!S._suppDayPicks[dayName]) S._suppDayPicks[dayName] = [];
+  const arr = S._suppDayPicks[dayName];
+  const idx = arr.indexOf(routineId);
+  if (idx === -1) {
+    arr.push(routineId);
+  } else {
+    arr.splice(idx, 1);
   }
-}
-
-// Get routines that should appear on a given day
-function getRoutinesForDay(dayType, dayName) {
-  const optIn = getSuppOptIn();
-  const activeRoutines = SUPP_ROUTINES.filter(r => optIn[r.id]);
-  if (activeRoutines.length === 0) return [];
-
-  // Check for explicit override first
-  const override = getSuppDayOverride(dayName);
-  if (override) {
-    return activeRoutines.filter(r => override.includes(r.id));
-  }
-
-  // Auto-assign based on day type
-  if (!dayType || dayType === 'rest' || dayType === 'cardio') return [];
-  return activeRoutines.filter(r => r.autoDays.includes(dayType));
+  saveState(S);
 }
 
 // Supp exercise check: supp-{weekId}-{dayName}-{routineId}-{exIdx}-{setIdx}
@@ -2077,174 +2124,11 @@ function renderSupplemental() {
   // Header
   const header = document.createElement('div');
   header.className = 'supp-header';
-  header.innerHTML = `<h2>⚡ Supplemental Exercises</h2><p>Optional gap-fillers — pick routines to add alongside the main program</p>`;
+  header.innerHTML = `<h2>⚡ Supplemental Library</h2><p>Exercise reference — use the ＋ Supplemental button on each day card to add these to your workouts</p>`;
   mc.appendChild(header);
 
-  // Opt-in panel
-  const optIn = getSuppOptIn();
-  const optPanel = document.createElement('div');
-  optPanel.className = 'supp-opt-in';
-  optPanel.innerHTML = `<div class="supp-opt-title">Choose Your Routines</div>`;
-  const optGrid = document.createElement('div');
-  optGrid.className = 'supp-opt-grid';
-
-  SUPP_ROUTINES.forEach(r => {
-    const isOn = !!optIn[r.id];
-    const item = document.createElement('div');
-    item.className = 'supp-opt-item' + (isOn ? ' active' : '');
-    item.innerHTML = `
-      <div class="supp-opt-check">${isOn ? '✓' : ''}</div>
-      <div class="supp-opt-info">
-        <div class="supp-opt-name">${r.name}</div>
-        <div class="supp-opt-desc">${r.desc}</div>
-      </div>`;
-    item.addEventListener('click', () => {
-      toggleSuppOptIn(r.id);
-      renderSupplemental();
-    });
-    optGrid.appendChild(item);
-  });
-  optPanel.appendChild(optGrid);
-  mc.appendChild(optPanel);
-
-  // Render each opted-in routine as an interactive card
-  const activeRoutines = SUPP_ROUTINES.filter(r => optIn[r.id]);
-
-  if (activeRoutines.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.cssText = 'text-align:center;padding:40px 20px;color:var(--muted);font-family:var(--font-mono);font-size:12px;';
-    empty.textContent = 'Tap routines above to activate them ↑';
-    mc.appendChild(empty);
-    return;
-  }
-
-  // ── Day Assignment Preview ──
-  // Show which routines map to which days for the current week
-  const previewTitle = document.createElement('div');
-  previewTitle.className = 'supp-opt-in';
-  previewTitle.style.background = 'var(--surface2)';
-
-  const wk = WEEKS.find(w => w.id === currentWeek) || (BONUS_WEEKS.find(b => b.id === currentWeek) ? bonusToWeek(BONUS_WEEKS.find(b => b.id === currentWeek)) : WEEKS[WEEKS.length - 1]);
-  const wkLabel = wk ? wk.label : 'Current Week';
-
-  previewTitle.innerHTML = `<div class="supp-opt-title" style="margin-bottom:4px">📅 Day Assignments — ${wkLabel}</div>
-    <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Auto-assigned by workout type · tap a routine tag to remove it from that day</div>`;
-
-  const dayGrid = document.createElement('div');
-  dayGrid.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-
-  if (wk) {
-    DAY_ORDER.forEach(dayName => {
-      const dd = wk.days[dayName];
-      if (!dd || dd.type === 'rest' || dd.type === 'cardio') return;
-
-      const dayRoutines = getRoutinesForDay(dd.type, dayName);
-      if (dayRoutines.length === 0 && activeRoutines.length > 0) return;
-
-      const dayRow = document.createElement('div');
-      dayRow.style.cssText = 'display:flex;gap:8px;align-items:flex-start;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;';
-
-      const dayLabel = document.createElement('div');
-      dayLabel.style.cssText = 'min-width:56px;font-size:11px;font-weight:800;letter-spacing:0.5px;color:var(--text);padding-top:3px;';
-      dayLabel.textContent = dayName.slice(0, 3).toUpperCase();
-      dayRow.appendChild(dayLabel);
-
-      const tagInfo = document.createElement('div');
-      tagInfo.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px;';
-
-      // Day type pill
-      const typePill = document.createElement('div');
-      typePill.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px;';
-      typePill.textContent = dd.tag || dd.type;
-      tagInfo.appendChild(typePill);
-
-      // Routine tags
-      const tagWrap = document.createElement('div');
-      tagWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
-
-      if (dayRoutines.length === 0) {
-        const noTag = document.createElement('span');
-        noTag.style.cssText = 'font-size:10px;color:var(--muted);font-family:var(--font-mono);font-style:italic;';
-        noTag.textContent = 'no routines assigned';
-        tagWrap.appendChild(noTag);
-      } else {
-        dayRoutines.forEach(r => {
-          const tag = document.createElement('span');
-          tag.className = 'supp-cat-tag';
-          tag.style.cssText = 'cursor:pointer;border:1px solid var(--accent3)44;transition:all 0.15s;';
-          tag.innerHTML = `<span class="supp-cat-dot ${r.type}" style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle"></span>${r.name}`;
-          tag.title = `${r.exercises.length} exercises · ${r.sets} set${r.sets > 1 ? 's' : ''} · click to remove`;
-          tag.addEventListener('click', () => {
-            // Override: remove this routine from this day
-            const current = getSuppDayOverride(dayName) || dayRoutines.map(dr => dr.id);
-            const updated = current.filter(id => id !== r.id);
-            setSuppDayOverride(dayName, updated);
-            renderSupplemental();
-            showToast(`Removed ${r.name} from ${dayName}`);
-          });
-          tagWrap.appendChild(tag);
-        });
-      }
-
-      // "+ add" button to add a routine to this day
-      const addBtn = document.createElement('span');
-      addBtn.style.cssText = 'font-size:10px;color:var(--accent3);cursor:pointer;font-family:var(--font-mono);padding:2px 6px;border:1px dashed var(--accent3)44;border-radius:4px;white-space:nowrap;';
-      addBtn.textContent = '+ add';
-      addBtn.addEventListener('click', () => {
-        // Show a mini picker of routines not already assigned
-        const currentIds = dayRoutines.map(r => r.id);
-        const available = activeRoutines.filter(r => !currentIds.includes(r.id));
-        if (available.length === 0) {
-          showToast('All active routines already on this day');
-          return;
-        }
-        const pick = available[0]; // Add the first available one
-        const current = getSuppDayOverride(dayName) || dayRoutines.map(dr => dr.id);
-        current.push(pick.id);
-        setSuppDayOverride(dayName, current);
-        renderSupplemental();
-        showToast(`Added ${pick.name} to ${dayName}`);
-      });
-      tagWrap.appendChild(addBtn);
-
-      tagInfo.appendChild(tagWrap);
-
-      // Show exercises preview
-      const exPreview = document.createElement('div');
-      exPreview.style.cssText = 'font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:4px;line-height:1.5;';
-      const allEx = dayRoutines.flatMap(r => r.exercises.map(([n]) => n));
-      if (allEx.length > 0) {
-        exPreview.textContent = allEx.join(' · ');
-      }
-      tagInfo.appendChild(exPreview);
-
-      dayRow.appendChild(tagInfo);
-      dayGrid.appendChild(dayRow);
-    });
-
-    // Reset overrides link
-    if (S._suppDayOverride && Object.keys(S._suppDayOverride).length > 0) {
-      const resetRow = document.createElement('div');
-      resetRow.style.cssText = 'text-align:right;padding:4px 0;';
-      const resetBtn = document.createElement('span');
-      resetBtn.className = 'reset-link';
-      resetBtn.textContent = '↺ reset all to auto-assign';
-      resetBtn.addEventListener('click', () => {
-        delete S._suppDayOverride;
-        saveState(S);
-        renderSupplemental();
-        showToast('Day assignments reset to auto');
-      });
-      resetRow.appendChild(resetBtn);
-      dayGrid.appendChild(resetRow);
-    }
-  }
-
-  previewTitle.appendChild(dayGrid);
-  mc.appendChild(previewTitle);
-
-  // Exercise library — show all exercises grouped by routine for reference
-  activeRoutines.forEach(routine => {
+  // Render each routine as a collapsible reference card
+  SUPP_ROUTINES.forEach(routine => {
     const card = document.createElement('div');
     card.className = 'supp-category';
 
@@ -2270,17 +2154,19 @@ function renderSupplemental() {
       hdr.querySelector('.supp-cat-arrow').classList.toggle('open', !body.classList.contains('collapsed'));
     });
 
+    // Description
     const why = document.createElement('div');
     why.className = 'supp-why';
     why.textContent = routine.desc;
     body.appendChild(why);
 
-    // Auto-assign info
-    const assignInfo = document.createElement('div');
-    assignInfo.style.cssText = 'font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;';
-    assignInfo.textContent = `Auto-assigns to: ${routine.autoDays.join(', ')} days`;
-    body.appendChild(assignInfo);
+    // Best for info
+    const bestFor = document.createElement('div');
+    bestFor.style.cssText = 'font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:10px;';
+    bestFor.textContent = `Best paired with: ${routine.autoDays.join(', ')} days`;
+    body.appendChild(bestFor);
 
+    // Exercise list (read-only, no checkboxes)
     routine.exercises.forEach(([name, reps], i) => {
       const row = document.createElement('div');
       row.className = 'exercise-row supp-ex-row';
