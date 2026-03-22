@@ -781,6 +781,93 @@ main { padding: 20px 16px 120px; max-width: 680px; margin: 0 auto; }
 .coach-sendbtn:active{transform:scale(.92);}
 .coach-sendbtn:disabled{opacity:.3;cursor:default;}
 /* ══ END AI COACH ══════════════════════════════════════════════════ */
+
+/* ══ SUPPLEMENTAL TAB ═════════════════════════════════════════════ */
+.nav-btn.supp { border-color: var(--accent3); color: var(--accent3); }
+.nav-btn.supp.active { background: var(--accent3); color: var(--bg); }
+
+.supp-header { text-align: center; padding: 20px 0 16px; }
+.supp-header h2 {
+  font-size: clamp(22px,7vw,34px); font-weight: 800;
+  background: linear-gradient(135deg,var(--accent3),#4dd4b0);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.supp-header p { color: var(--muted); font-size: 12px; margin-top: 6px; font-family: var(--font-mono); }
+
+.supp-opt-in {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; margin-bottom: 16px;
+}
+.supp-opt-title { font-size: 13px; font-weight: 800; margin-bottom: 10px; color: var(--text); }
+.supp-opt-grid { display: flex; flex-direction: column; gap: 6px; }
+.supp-opt-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: border-color 0.15s; user-select: none;
+}
+.supp-opt-item:hover { border-color: var(--accent3)88; }
+.supp-opt-item.active { border-color: var(--accent3); background: var(--accent3)0d; }
+.supp-opt-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border); display: flex;
+  align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0; transition: all 0.15s;
+}
+.supp-opt-item.active .supp-opt-check {
+  background: var(--accent3); border-color: var(--accent3); color: var(--bg);
+}
+.supp-opt-info { flex: 1; }
+.supp-opt-name { font-size: 12px; font-weight: 700; }
+.supp-opt-desc { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+
+.supp-category {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; margin-bottom: 12px;
+}
+.supp-cat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; cursor: pointer; user-select: none;
+}
+.supp-cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.supp-cat-dot.hinge { background: var(--gold); }
+.supp-cat-dot.core { background: var(--accent); }
+.supp-cat-dot.pull { background: var(--accent2); }
+.supp-cat-dot.warmup { background: var(--accent3); }
+.supp-cat-dot.single { background: #4dd4b0; }
+.supp-cat-name { font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.supp-cat-tag { font-size: 10px; font-family: var(--font-mono); color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 999px; }
+.supp-cat-body { padding: 0 16px 16px; }
+.supp-cat-body.collapsed { display: none; }
+.supp-cat-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+.supp-cat-arrow.open { transform: rotate(90deg); }
+
+.supp-why {
+  font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  line-height: 1.5; padding: 8px 10px; margin-bottom: 10px;
+  background: var(--surface2); border-radius: 8px;
+  border-left: 3px solid var(--accent3);
+}
+/* ══ END SUPPLEMENTAL ═════════════════════════════════════════════ */
+
+/* ── Supplemental inside day cards ── */
+.supp-day-section { margin-top: 14px; }
+.supp-day-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; padding: 0 2px;
+}
+.supp-day-divider-line { flex: 1; height: 1px; background: var(--accent3)44; }
+.supp-day-divider-label {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  color: var(--accent3); letter-spacing: 2px; white-space: nowrap;
+}
+.supp-routine-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; margin-bottom: 6px;
+  background: var(--accent3)08; border-radius: 6px;
+  border-left: 3px solid var(--accent3)55;
+}
+.supp-ex-row::before { background: var(--accent3) !important; }
 </style>
 </head>
 <body>
@@ -1057,6 +1144,87 @@ const MEMBER_EQUIPMENT = [
 
 const STRETCHES = ['Lower Trunk Rotation','Open Book','Downward Dog','Child\'s Pose','Hip Flexor Stretch','90/90 Hip Stretch','Doorway Chest Stretch','Shoulder Cross-Body Stretch','Pigeon Pose','World\'s Greatest Stretch'];
 
+// ────────────────────────────────────────────
+// SUPPLEMENTAL ROUTINES (opt-in per member)
+// ────────────────────────────────────────────
+const SUPP_ROUTINES = [
+  {
+    id: 'warmup',
+    name: 'Lower Back Warmup',
+    desc: '5-min pre-workout sequence — do every session',
+    type: 'warmup',
+    sets: 1,
+    // Auto-assign to ALL workout days (not rest/cardio)
+    autoDays: ['push','pull','legs'],
+    exercises: [
+      ['Cat-Cow', '10 reps (slow)'],
+      ['90/90 Hip Stretch', '30 sec/side'],
+      ['Dead Bug (no weight)', '8/side'],
+      ['Glute Bridge (3 sec hold)', '10 reps'],
+      ['Band Pull-Apart', '15 reps'],
+    ]
+  },
+  {
+    id: 'hinge',
+    name: 'Hip Hinge & Glutes',
+    desc: 'Posterior chain — protects lower back',
+    type: 'hinge',
+    sets: 3,
+    autoDays: ['legs'],
+    exercises: [
+      ['KB Deadlift', '8–10 reps'],
+      ['Single-Leg RDL', '8/leg'],
+      ['Hip Thrust (bench)', '12–15 reps'],
+      ['KB Swing (heavy)', '15 reps'],
+      ['Good Morning (light)', '10 reps'],
+    ]
+  },
+  {
+    id: 'single',
+    name: 'Single-Leg Strength',
+    desc: 'Fixes imbalances — prevents injuries',
+    type: 'single',
+    sets: 3,
+    autoDays: ['legs'],
+    exercises: [
+      ['Bulgarian Split Squat', '8/leg'],
+      ['Step-Up (bench)', '10/leg'],
+      ['Lateral Lunge', '8/leg'],
+      ['KB Goblet Squat (deep)', '10–12 reps'],
+    ]
+  },
+  {
+    id: 'core',
+    name: 'Anti-Movement Core',
+    desc: 'Core as a shield — anti-extension & anti-rotation',
+    type: 'core',
+    sets: 3,
+    autoDays: ['push','legs'],
+    exercises: [
+      ['Dead Bug', '8/side'],
+      ['Pallof Press (band)', '10/side'],
+      ['Bird Dog (2 sec hold)', '8/side'],
+      ['Single-Arm Farmer Carry', '40 yd/side'],
+      ['Body Saw (plank)', '8–10 reps'],
+    ]
+  },
+  {
+    id: 'pull',
+    name: 'Pulling & Back',
+    desc: 'Balances push-heavy program — posture + shoulder health',
+    type: 'pull',
+    sets: 3,
+    autoDays: ['push'],
+    exercises: [
+      ['DB Row (single-arm)', '10/arm'],
+      ['Band Pull-Apart', '15–20 reps'],
+      ['Renegade Row', '8/arm'],
+      ['Face Pull (band)', '15 reps'],
+      ['KB Gorilla Row', '8/arm'],
+    ]
+  },
+];
+
 const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const SHORT_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -1322,6 +1490,12 @@ function renderNav() {
     btn.onclick = () => { currentWeek = bw.id; renderAll(); };
     nav.appendChild(btn);
   });
+  // Supplemental tab
+  const suppBtn = document.createElement('button');
+  suppBtn.className = 'nav-btn supp' + (currentWeek === 'supp' ? ' active' : '');
+  suppBtn.textContent = '＋ Supplemental';
+  suppBtn.onclick = () => { currentWeek = 'supp'; renderAll(); };
+  nav.appendChild(suppBtn);
 }
 
 function renderMyEquipBanner(mc) {
@@ -1530,6 +1704,82 @@ function renderWeek(week) {
           <span class="reset-link" data-week="${week.id}" data-day="${dayName}">↺ reset</span>`;
         body.appendChild(ri);
       }
+
+      // ── SUPPLEMENTAL EXERCISES (appended after main circuit) ──
+      const dayRoutines = getRoutinesForDay(dayData.type, dayName);
+      if (dayRoutines.length > 0) {
+        const suppSection = document.createElement('div');
+        suppSection.className = 'supp-day-section';
+        suppSection.innerHTML = `<div class="supp-day-divider"><span class="supp-day-divider-line"></span><span class="supp-day-divider-label">＋ SUPPLEMENTAL</span><span class="supp-day-divider-line"></span></div>`;
+
+        dayRoutines.forEach(routine => {
+          const numSets = routine.sets;
+          const rExercises = routine.exercises;
+
+          // Count done for this routine on this day
+          let rDone = 0;
+          rExercises.forEach((_, ei) => {
+            for (let si = 0; si < numSets; si++) {
+              if (getSuppCheck(week.id, dayName, routine.id, ei, si)) rDone++;
+            }
+          });
+          const rTotal = rExercises.length * numSets;
+          const rAllDone = rTotal > 0 && rDone === rTotal;
+
+          // Routine mini-header
+          const rHead = document.createElement('div');
+          rHead.className = 'supp-routine-head';
+          rHead.innerHTML = `
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="supp-cat-dot ${routine.type}"></span>
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.5px">${routine.name}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-family:var(--font-mono);font-size:9px;color:${rAllDone ? 'var(--accent3)' : 'var(--muted)'}">${rDone}/${rTotal}</span>
+              <span class="supp-cat-tag">${numSets === 1 ? '1 set' : numSets + ' sets'}</span>
+            </div>`;
+          suppSection.appendChild(rHead);
+
+          // Exercise rows with set checkboxes
+          const sList = document.createElement('div');
+          sList.className = 'exercise-list';
+
+          rExercises.forEach(([name, reps], exIdx) => {
+            const exAllDone = Array.from({length: numSets}, (_, si) => getSuppCheck(week.id, dayName, routine.id, exIdx, si)).every(Boolean);
+            const row = document.createElement('div');
+            row.className = 'exercise-row supp-ex-row' + (exAllDone ? ' ex-checked' : '');
+            row.id = `supp-exrow-${week.id}-${dayName}-${routine.id}-${exIdx}`;
+
+            const boxes = Array.from({length: numSets}, (_, si) => {
+              const checked = getSuppCheck(week.id, dayName, routine.id, exIdx, si);
+              return `<div class="round-box supp-box ${checked ? 'checked' : ''}" data-wk="${week.id}" data-day="${dayName}" data-rid="${routine.id}" data-ex="${exIdx}" data-s="${si}"></div>`;
+            }).join('');
+
+            const hasPinned = !!getVidOverride(name);
+            row.innerHTML = `
+              <div class="ex-info">
+                <span class="ex-num" style="color:var(--accent3)">${exIdx+1}</span>
+                <div class="ex-text">
+                  <span class="ex-name">${name}</span>
+                  <span class="ex-reps">${reps}</span>
+                </div>
+                <div class="ex-vid-btn${hasPinned ? ' pinned' : ''}" data-exname="${encodeURIComponent(name)}" title="Watch form guide">▶</div>
+              </div>
+              <div class="round-boxes">${boxes}</div>`;
+            sList.appendChild(row);
+
+            // Video button
+            row.querySelector('.ex-vid-btn').addEventListener('click', e => {
+              e.stopPropagation();
+              openVidModal(name);
+            });
+          });
+
+          suppSection.appendChild(sList);
+        });
+
+        body.appendChild(suppSection);
+      }
     }
 
     card.appendChild(body);
@@ -1545,7 +1795,7 @@ function renderWeek(week) {
   });
 
 
-  mc.querySelectorAll('.round-box').forEach(box => {
+  mc.querySelectorAll('.round-box:not(.supp-box)').forEach(box => {
     box.addEventListener('click', e => {
       e.stopPropagation();
       const wk = parseInt(box.dataset.wk);
@@ -1645,6 +1895,43 @@ function renderWeek(week) {
     });
   });
 
+  // ── SUPPLEMENTAL CHECKBOX HANDLERS ──
+  mc.querySelectorAll('.supp-box').forEach(box => {
+    box.addEventListener('click', e => {
+      e.stopPropagation();
+      const wk = parseInt(box.dataset.wk);
+      const day = box.dataset.day;
+      const rid = box.dataset.rid;
+      const exIdx = parseInt(box.dataset.ex);
+      const sIdx = parseInt(box.dataset.s);
+
+      const isNow = toggleSuppCheck(wk, day, rid, exIdx, sIdx);
+      box.classList.toggle('checked', isNow);
+      if (navigator.vibrate) navigator.vibrate(isNow ? 15 : 8);
+
+      const routine = SUPP_ROUTINES.find(r => r.id === rid);
+      if (!routine) return;
+      const numSets = routine.sets;
+      const rExercises = routine.exercises;
+
+      // Update row done state
+      const exAllDone = Array.from({length: numSets}, (_, si) => getSuppCheck(wk, day, rid, exIdx, si)).every(Boolean);
+      const rowEl = document.getElementById(`supp-exrow-${wk}-${day}-${rid}-${exIdx}`);
+      if (rowEl) rowEl.classList.toggle('ex-checked', exAllDone);
+
+      // Check if entire routine is complete
+      let rDone = 0;
+      rExercises.forEach((_, ei) => {
+        for (let si = 0; si < numSets; si++) {
+          if (getSuppCheck(wk, day, rid, ei, si)) rDone++;
+        }
+      });
+      if (rDone === rExercises.length * numSets) {
+        showToast(`🔥 ${routine.name} complete!`);
+      }
+    });
+  });
+
   // ── TRACKER ──
   const trackerSec = document.createElement('div');
   trackerSec.className = 'tracker-section';
@@ -1716,17 +2003,325 @@ function renderWeek(week) {
 
 // (bonus weeks now render via bonusToWeek + renderWeek)
 
+// ────────────────────────────────────────────
+// SUPPLEMENTAL — opt-in state & render
+// ────────────────────────────────────────────
+function getSuppOptIn() {
+  return S._suppOptIn || {};
+}
+function toggleSuppOptIn(routineId) {
+  if (!S._suppOptIn) S._suppOptIn = {};
+  S._suppOptIn[routineId] = !S._suppOptIn[routineId];
+  saveState(S);
+  return S._suppOptIn[routineId];
+}
+
+// Day overrides: S._suppDayOverride = { 'Monday': ['warmup','pull'], 'Tuesday': ['hinge','core'], ... }
+// null = use auto-assign, array = explicit override
+function getSuppDayOverride(dayName) {
+  return S._suppDayOverride?.[dayName] ?? null;
+}
+function setSuppDayOverride(dayName, routineIds) {
+  if (!S._suppDayOverride) S._suppDayOverride = {};
+  S._suppDayOverride[dayName] = routineIds;
+  saveState(S);
+}
+function clearSuppDayOverride(dayName) {
+  if (S._suppDayOverride) {
+    delete S._suppDayOverride[dayName];
+    saveState(S);
+  }
+}
+
+// Get routines that should appear on a given day
+function getRoutinesForDay(dayType, dayName) {
+  const optIn = getSuppOptIn();
+  const activeRoutines = SUPP_ROUTINES.filter(r => optIn[r.id]);
+  if (activeRoutines.length === 0) return [];
+
+  // Check for explicit override first
+  const override = getSuppDayOverride(dayName);
+  if (override) {
+    return activeRoutines.filter(r => override.includes(r.id));
+  }
+
+  // Auto-assign based on day type
+  if (!dayType || dayType === 'rest' || dayType === 'cardio') return [];
+  return activeRoutines.filter(r => r.autoDays.includes(dayType));
+}
+
+// Supp exercise check: supp-{weekId}-{dayName}-{routineId}-{exIdx}-{setIdx}
+function getSuppCheck(weekId, dayName, routineId, exIdx, setIdx) {
+  return S[`supp-${weekId}-${dayName}-${routineId}-${exIdx}-${setIdx}`] || false;
+}
+function toggleSuppCheck(weekId, dayName, routineId, exIdx, setIdx) {
+  const key = `supp-${weekId}-${dayName}-${routineId}-${exIdx}-${setIdx}`;
+  S[key] = !S[key];
+  saveState(S);
+  return S[key];
+}
+function resetSuppChecks(weekId, dayName, routineId, numEx, numSets) {
+  for (let e = 0; e < numEx; e++) {
+    for (let s = 0; s < numSets; s++) {
+      delete S[`supp-${weekId}-${dayName}-${routineId}-${e}-${s}`];
+    }
+  }
+  saveState(S);
+}
+
+function renderSupplemental() {
+  const mc = document.getElementById('mainContent');
+  mc.innerHTML = '';
+  mc.className = 'fade-in';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'supp-header';
+  header.innerHTML = `<h2>⚡ Supplemental Exercises</h2><p>Optional gap-fillers — pick routines to add alongside the main program</p>`;
+  mc.appendChild(header);
+
+  // Opt-in panel
+  const optIn = getSuppOptIn();
+  const optPanel = document.createElement('div');
+  optPanel.className = 'supp-opt-in';
+  optPanel.innerHTML = `<div class="supp-opt-title">Choose Your Routines</div>`;
+  const optGrid = document.createElement('div');
+  optGrid.className = 'supp-opt-grid';
+
+  SUPP_ROUTINES.forEach(r => {
+    const isOn = !!optIn[r.id];
+    const item = document.createElement('div');
+    item.className = 'supp-opt-item' + (isOn ? ' active' : '');
+    item.innerHTML = `
+      <div class="supp-opt-check">${isOn ? '✓' : ''}</div>
+      <div class="supp-opt-info">
+        <div class="supp-opt-name">${r.name}</div>
+        <div class="supp-opt-desc">${r.desc}</div>
+      </div>`;
+    item.addEventListener('click', () => {
+      toggleSuppOptIn(r.id);
+      renderSupplemental();
+    });
+    optGrid.appendChild(item);
+  });
+  optPanel.appendChild(optGrid);
+  mc.appendChild(optPanel);
+
+  // Render each opted-in routine as an interactive card
+  const activeRoutines = SUPP_ROUTINES.filter(r => optIn[r.id]);
+
+  if (activeRoutines.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:40px 20px;color:var(--muted);font-family:var(--font-mono);font-size:12px;';
+    empty.textContent = 'Tap routines above to activate them ↑';
+    mc.appendChild(empty);
+    return;
+  }
+
+  // ── Day Assignment Preview ──
+  // Show which routines map to which days for the current week
+  const previewTitle = document.createElement('div');
+  previewTitle.className = 'supp-opt-in';
+  previewTitle.style.background = 'var(--surface2)';
+
+  const wk = WEEKS.find(w => w.id === currentWeek) || (BONUS_WEEKS.find(b => b.id === currentWeek) ? bonusToWeek(BONUS_WEEKS.find(b => b.id === currentWeek)) : WEEKS[WEEKS.length - 1]);
+  const wkLabel = wk ? wk.label : 'Current Week';
+
+  previewTitle.innerHTML = `<div class="supp-opt-title" style="margin-bottom:4px">📅 Day Assignments — ${wkLabel}</div>
+    <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Auto-assigned by workout type · tap a routine tag to remove it from that day</div>`;
+
+  const dayGrid = document.createElement('div');
+  dayGrid.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+
+  if (wk) {
+    DAY_ORDER.forEach(dayName => {
+      const dd = wk.days[dayName];
+      if (!dd || dd.type === 'rest' || dd.type === 'cardio') return;
+
+      const dayRoutines = getRoutinesForDay(dd.type, dayName);
+      if (dayRoutines.length === 0 && activeRoutines.length > 0) return;
+
+      const dayRow = document.createElement('div');
+      dayRow.style.cssText = 'display:flex;gap:8px;align-items:flex-start;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;';
+
+      const dayLabel = document.createElement('div');
+      dayLabel.style.cssText = 'min-width:56px;font-size:11px;font-weight:800;letter-spacing:0.5px;color:var(--text);padding-top:3px;';
+      dayLabel.textContent = dayName.slice(0, 3).toUpperCase();
+      dayRow.appendChild(dayLabel);
+
+      const tagInfo = document.createElement('div');
+      tagInfo.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:4px;';
+
+      // Day type pill
+      const typePill = document.createElement('div');
+      typePill.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px;';
+      typePill.textContent = dd.tag || dd.type;
+      tagInfo.appendChild(typePill);
+
+      // Routine tags
+      const tagWrap = document.createElement('div');
+      tagWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+
+      if (dayRoutines.length === 0) {
+        const noTag = document.createElement('span');
+        noTag.style.cssText = 'font-size:10px;color:var(--muted);font-family:var(--font-mono);font-style:italic;';
+        noTag.textContent = 'no routines assigned';
+        tagWrap.appendChild(noTag);
+      } else {
+        dayRoutines.forEach(r => {
+          const tag = document.createElement('span');
+          tag.className = 'supp-cat-tag';
+          tag.style.cssText = 'cursor:pointer;border:1px solid var(--accent3)44;transition:all 0.15s;';
+          tag.innerHTML = `<span class="supp-cat-dot ${r.type}" style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle"></span>${r.name}`;
+          tag.title = `${r.exercises.length} exercises · ${r.sets} set${r.sets > 1 ? 's' : ''} · click to remove`;
+          tag.addEventListener('click', () => {
+            // Override: remove this routine from this day
+            const current = getSuppDayOverride(dayName) || dayRoutines.map(dr => dr.id);
+            const updated = current.filter(id => id !== r.id);
+            setSuppDayOverride(dayName, updated);
+            renderSupplemental();
+            showToast(`Removed ${r.name} from ${dayName}`);
+          });
+          tagWrap.appendChild(tag);
+        });
+      }
+
+      // "+ add" button to add a routine to this day
+      const addBtn = document.createElement('span');
+      addBtn.style.cssText = 'font-size:10px;color:var(--accent3);cursor:pointer;font-family:var(--font-mono);padding:2px 6px;border:1px dashed var(--accent3)44;border-radius:4px;white-space:nowrap;';
+      addBtn.textContent = '+ add';
+      addBtn.addEventListener('click', () => {
+        // Show a mini picker of routines not already assigned
+        const currentIds = dayRoutines.map(r => r.id);
+        const available = activeRoutines.filter(r => !currentIds.includes(r.id));
+        if (available.length === 0) {
+          showToast('All active routines already on this day');
+          return;
+        }
+        const pick = available[0]; // Add the first available one
+        const current = getSuppDayOverride(dayName) || dayRoutines.map(dr => dr.id);
+        current.push(pick.id);
+        setSuppDayOverride(dayName, current);
+        renderSupplemental();
+        showToast(`Added ${pick.name} to ${dayName}`);
+      });
+      tagWrap.appendChild(addBtn);
+
+      tagInfo.appendChild(tagWrap);
+
+      // Show exercises preview
+      const exPreview = document.createElement('div');
+      exPreview.style.cssText = 'font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:4px;line-height:1.5;';
+      const allEx = dayRoutines.flatMap(r => r.exercises.map(([n]) => n));
+      if (allEx.length > 0) {
+        exPreview.textContent = allEx.join(' · ');
+      }
+      tagInfo.appendChild(exPreview);
+
+      dayRow.appendChild(tagInfo);
+      dayGrid.appendChild(dayRow);
+    });
+
+    // Reset overrides link
+    if (S._suppDayOverride && Object.keys(S._suppDayOverride).length > 0) {
+      const resetRow = document.createElement('div');
+      resetRow.style.cssText = 'text-align:right;padding:4px 0;';
+      const resetBtn = document.createElement('span');
+      resetBtn.className = 'reset-link';
+      resetBtn.textContent = '↺ reset all to auto-assign';
+      resetBtn.addEventListener('click', () => {
+        delete S._suppDayOverride;
+        saveState(S);
+        renderSupplemental();
+        showToast('Day assignments reset to auto');
+      });
+      resetRow.appendChild(resetBtn);
+      dayGrid.appendChild(resetRow);
+    }
+  }
+
+  previewTitle.appendChild(dayGrid);
+  mc.appendChild(previewTitle);
+
+  // Exercise library — show all exercises grouped by routine for reference
+  activeRoutines.forEach(routine => {
+    const card = document.createElement('div');
+    card.className = 'supp-category';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'supp-cat-header';
+    hdr.innerHTML = `
+      <div class="day-name-group">
+        <span class="supp-cat-dot ${routine.type}"></span>
+        <span class="supp-cat-name">${routine.name}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="supp-cat-tag">${routine.sets === 1 ? '1 set' : routine.sets + ' sets'}</span>
+        <span class="supp-cat-tag">${routine.exercises.length} exercises</span>
+        <span class="supp-cat-arrow">▸</span>
+      </div>`;
+    card.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = 'supp-cat-body collapsed';
+
+    hdr.addEventListener('click', () => {
+      body.classList.toggle('collapsed');
+      hdr.querySelector('.supp-cat-arrow').classList.toggle('open', !body.classList.contains('collapsed'));
+    });
+
+    const why = document.createElement('div');
+    why.className = 'supp-why';
+    why.textContent = routine.desc;
+    body.appendChild(why);
+
+    // Auto-assign info
+    const assignInfo = document.createElement('div');
+    assignInfo.style.cssText = 'font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;';
+    assignInfo.textContent = `Auto-assigns to: ${routine.autoDays.join(', ')} days`;
+    body.appendChild(assignInfo);
+
+    routine.exercises.forEach(([name, reps], i) => {
+      const row = document.createElement('div');
+      row.className = 'exercise-row supp-ex-row';
+      const hasPinned = !!getVidOverride(name);
+      row.innerHTML = `
+        <div class="ex-info" style="flex:1">
+          <span class="ex-num" style="color:var(--accent3)">${i+1}</span>
+          <div class="ex-text">
+            <span class="ex-name">${name}</span>
+            <span class="ex-reps">${reps}</span>
+          </div>
+          <div class="ex-vid-btn${hasPinned ? ' pinned' : ''}" data-exname="${encodeURIComponent(name)}" title="Watch form guide">▶</div>
+        </div>`;
+      body.appendChild(row);
+
+      row.querySelector('.ex-vid-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        openVidModal(name);
+      });
+    });
+
+    card.appendChild(body);
+    mc.appendChild(card);
+  });
+}
+
 function renderAll() {
   renderNav();
-  // Check regular weeks first
-  const w = WEEKS.find(w => w.id === currentWeek);
-  if (w) {
-    renderWeek(w);
+  if (currentWeek === 'supp') {
+    renderSupplemental();
   } else {
-    // Check bonus weeks — convert to regular week format for full interactivity
-    const bw = BONUS_WEEKS.find(b => b.id === currentWeek);
-    if (bw) {
-      renderWeek(bonusToWeek(bw));
+    // Check regular weeks first
+    const w = WEEKS.find(w => w.id === currentWeek);
+    if (w) {
+      renderWeek(w);
+    } else {
+      // Check bonus weeks
+      const bw = BONUS_WEEKS.find(b => b.id === currentWeek);
+      if (bw) {
+        renderWeek(bonusToWeek(bw));
+      }
     }
   }
   updateBottomBar();
@@ -1796,7 +2391,7 @@ function bonusToWeek(bw) {
 function updateBottomBar() {
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const d = new Date();
-  const weekLabel = `Wk ${currentWeek}`;
+  const weekLabel = currentWeek === 'supp' ? 'Supplemental' : `Wk ${currentWeek}`;
   const syncIcon = jsonbinReady ? '<span style="color:var(--accent3)">☁</span>' : '<span style="color:var(--gold)">⚡</span>';
   document.getElementById('todayIndicator').innerHTML = `${syncIcon} <strong>${days[d.getDay()]} · ${weekLabel}</strong>`;
   // Update header pill
@@ -1819,7 +2414,7 @@ function showToast(msg) {
 // SETUP: Go to jsonbin.io → sign up → API Keys → Create Key
 //        Paste the $2a$10$... key below. Leave BIN_ID as-is;
 //        the app auto-creates a bin on first load.
-const JSONBIN_KEY  = '$2a$10$TBYCBJquZAVJgItwcP67T./gZVYDc89qTEvMMYRZIhVk4HmG4pnhe';   // ← paste Master Key ($2a$10$... format)
+const JSONBIN_KEY  = 'YOUR_JSONBIN_KEY_HERE';   // ← paste Master Key ($2a$10$... format)
 const JSONBIN_BIN  = 'YOUR_JSONBIN_BIN_ID_HERE'; // ← auto-created on first run, don't touch
 // ─────────────────────────────────────────────────────────────────
 
